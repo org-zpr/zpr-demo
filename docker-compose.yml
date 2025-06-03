@@ -1,0 +1,82 @@
+version: '3.9'
+
+services:
+  node-a:
+    build:
+      context: .
+    container_name: zpr-node-a
+    command: ["/bin/node", "-c", "/config/node-conf.toml"]
+    volumes:
+      - ./bin:/bin
+      - ./config/nodeA:/config
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    networks:
+      zprnet:
+        ipv4_address: 172.28.0.2
+
+  node-b:
+    build:
+      context: .
+    container_name: zpr-node-b
+    command: ["/bin/node", "-c", "/config/node-conf.toml"]
+    volumes:
+      - ./bin:/bin
+      - ./config/nodeB:/config
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    networks:
+      zprnet:
+        ipv4_address: 172.28.0.3
+
+  node-c:
+    build:
+      context: .
+    container_name: zpr-node-c
+    command: ["/bin/node", "-c", "/config/node-conf.toml"]
+    volumes:
+      - ./bin:/bin
+      - ./config/nodeC:/config
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    networks:
+      zprnet:
+        ipv4_address: 172.28.0.4
+
+  visa-service:
+    build:
+      context: .
+    container_name: zpr-vs
+    command: ["/bin/vservice", "-c", "/config/vs-config.yaml", "-p", "/config/policy.bin"]
+    volumes:
+      - ./bin:/bin
+      - ./config/visa:/config
+    networks:
+      zprnet:
+        ipv4_address: 172.28.0.10
+
+  visa-adapter:
+    build:
+      context: .
+    container_name: zpr-vs-adapter
+    command: ["/bin/adapter", "-c", "/config/adapter-vs-conf.toml"]
+    volumes:
+      - ./bin:/bin
+      - ./config/adapter-visa:/config
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    networks:
+      zprnet:
+        ipv4_address: 172.28.0.11
+
+networks:
+  zprnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+

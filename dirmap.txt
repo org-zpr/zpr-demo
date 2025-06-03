@@ -1,0 +1,23 @@
+zpr-demo/
+|-- docker-compose.yml
+├── Dockerfile
+├── Makefile
+├── bin/                    # Precompiled binaries go here
+├── scripts/
+│   └── gen_pki.sh          # Key + cert generation
+├── config/
+│   ├── authority/
+│   ├── nodeA/
+│   ├── nodeB/
+│   ├── nodeC/
+│   ├── visa/
+│   ├── adapter-visa/
+│   ├── policies/
+│   │   ├── policy.zpl
+│   │   ├── policy.zplc
+│   │   └── policy.bin
+│   └── web-service/
+└── services/
+    └── web-service/
+        └── server.py
+

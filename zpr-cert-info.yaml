@@ -1,0 +1,35 @@
+ca:
+  country: US
+  state: California
+  locality: Los Angeles
+  organization: AI
+  organizational_unit: ''
+  common_name: Anthony
+  email: ''
+services:
+  nodeA:
+    ip: 172.28.0.2
+    dns: node-a.zpr
+    type: node
+    zpr_addr: fd5a:5052:90de::1
+  nodeB:
+    ip: 172.28.0.3
+    dns: node-b.zpr
+    type: node
+    zpr_addr: fd5a:5052:90de::2
+  nodeC:
+    ip: 172.28.0.4
+    dns: node-c.zpr
+    type: node
+    zpr_addr: fd5a:5052:90de::3
+  visa:
+    ip: 172.28.0.10
+    dns: visa.zpr
+    type: visa
+    zpr_addr: fd5a:5052::10
+  adapter-visa:
+    ip: 172.28.0.11
+    dns: adapter-visa.zpr
+    type: adapter
+    node_addr: 172.28.0.2:5000
+    zpr_addr: fd5a:5052::11

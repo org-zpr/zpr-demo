@@ -2,22 +2,47 @@ BINARIES=node vservice adapter zpc zpr-pki
 CONFIG=config
 SCRIPTS=scripts
 
-all: build pki policy
+all: pull build pki
 
-build:
-	@echo "Ensure all binaries are present in ./bin:"
-	@for bin in $(BINARIES); do \
-		if [ ! -f ./bin/$$bin ]; then echo "Missing ./bin/$$bin"; exit 1; fi \
-	done
+pull:
+	@if [ -d "zpr-core/.git" ]; then \
+		echo "zpr-core already pulled"; \
+	else \
+		git clone git@github.com:org-zpr/zpr-core.git; \
+	fi
+	@if [ -d "zpr-compiler/.git" ]; then \
+		echo "zpr-compiler already pulled"; \
+	else \
+		git clone git@github.com:org-zpr/zpr-compiler.git; \
+	fi
+	@if [ -d "zpr-visaservice/.git" ]; then \
+		echo "zpr-visaservice already pulled"; \
+	else \
+		git clone git@github.com:org-zpr/zpr-visaservice.git; \
+	fi
+
+build: build-core build-compiler build-visaservice
+
+build-core:
+	@cd zpr-core && make it-gone && make it-so
+
+build-compiler:
+	@cd zpr-compiler && make clean && make build
+
+build-visaservice:
+	@cd zpr-visaservice && make clean && make build
 
 pki:
-	@bash $(SCRIPTS)/gen_pki.sh
+	@python3 scripts/gen_pki.py
 
 policy:
-	./bin/zpc -k $(CONFIG)/authority/zpr-rsa-key.pem $(CONFIG)/policies/policy.zpl
+	./bin/zplc -k $(CONFIG)/authority/zpr-rsa-key.pem $(CONFIG)/policies/policy.zpl
 
 up:
 	docker compose up --build
+
+clean:
+	@rm -rf zpr-{core,compiler,visaservice}
 
 down:
 	docker compose down

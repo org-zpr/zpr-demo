@@ -3,10 +3,9 @@ import yaml
 import subprocess
 from pathlib import Path
 
-CONFIG_PATH = Path("../zpr-cert-info.yaml")
-OVERRIDE_PATH = Path("../docker-compose.override.yml")
-AUTH_DIR = Path("../config/authority")
-BIN_PATH =  "~/zpr/zpr-core/tools/zpr-pki"
+CONFIG_PATH = Path("zpr-cert-info.yaml")
+OVERRIDE_PATH = Path("docker-compose.override.yml")
+AUTH_DIR = Path("config/authority")
 
 def run(cmd, **kwargs):
     print(f"Running: {' '.join(cmd)}")

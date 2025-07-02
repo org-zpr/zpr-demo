@@ -5,7 +5,7 @@ services:
     container_name: node
     command: ["/entrypoint.sh"]
     volumes:
-      - ./zpr-core/authority:/authority
+      - ./authority:/authority
       - ./docker-node/entrypoint.sh:/entrypoint.sh
     cap_add:
       - NET_ADMIN
@@ -21,7 +21,7 @@ services:
     container_name: visa-service
     command: ["/entrypoint.sh"]
     volumes:
-      - ./zpr-core/authority:/authority
+      - ./authority:/authority
       - ./docker-vs/entrypoint.sh:/entrypoint.sh
     cap_add:
       - NET_ADMIN

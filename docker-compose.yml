@@ -1,21 +1,37 @@
 services:
-  visa-service:
+  node:
     image: alohagarage/zpr:latest
     platform: linux/amd64
-    container_name: visa-service
-    #command: ["/app/bin/vservice", "-c", "/authority/vs-config.yaml", "-p", "/authority/zpr-full-access.bin", "-l", "[fd5a:5052::2]:5002"]
+    container_name: node
     command: ["/entrypoint.sh"]
     volumes:
       - ./zpr-core/authority:/authority
-      - ./entrypoint.sh:/entrypoint.sh
+      - ./docker-node/entrypoint.sh:/entrypoint.sh
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/net/tun
     privileged: true
     networks:
-      v6net:
+      - dualstack
+
+  visa-service:
+    image: alohagarage/zpr:latest
+    platform: linux/amd64
+    container_name: visa-service
+    command: ["/entrypoint.sh"]
+    volumes:
+      - ./zpr-core/authority:/authority
+      - ./docker-vs/entrypoint.sh:/entrypoint.sh
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    privileged: true
+    networks:
+      dualstack:
         ipv6_address: fd5a:5052::2
+        #ipv4_address: 129.6.7.3
 
   admin-proxy:
     image: alpine/socat
@@ -28,12 +44,13 @@ services:
     depends_on:
       - visa-service
     networks:
-      v6net:
-
+      - dualstack
+  
 networks:
-  v6net:
+  dualstack:
     driver: bridge
     enable_ipv6: true
     ipam:
       config:
+        - subnet: 129.6.7.0/24
         - subnet: fd5a:5052::/64

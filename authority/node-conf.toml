@@ -1,0 +1,8 @@
+[global]
+name = "node"
+ca_file = "auth-ca.crt"
+certificate_file = "node-noise.crt"
+private_key_file = "node-noise.key"
+self_addr = "129.6.7.1:5000"
+zpr_addr = [ "fd5a:5052::2" ]
+tun_if = "tun9"

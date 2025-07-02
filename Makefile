@@ -39,7 +39,7 @@ policy:
 	./bin/zplc -k $(CONFIG)/authority/zpr-rsa-key.pem $(CONFIG)/policies/policy.zpl
 
 up:
-	docker compose up --build
+	docker compose down --volumes --remove-orphans; docker network prune -f; docker compose up --build
 
 clean:
 	@rm -rf zpr-{core,compiler,visaservice}

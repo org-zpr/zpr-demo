@@ -29,9 +29,9 @@ services:
       - /dev/net/tun
     privileged: true
     networks:
-      dualstack:
+     dualstack:
         ipv6_address: fd5a:5052::2
-        #ipv4_address: 129.6.7.3
+        ipv4_address: 129.6.7.2
 
   admin-proxy:
     image: alpine/socat

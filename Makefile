@@ -32,6 +32,13 @@ build-compiler:
 build-visaservice:
 	@cd zpr-visaservice && make clean && make build
 
+build-image:
+	@mkdir -p bin
+	@cp zpr-core/adapter/ph/target/debug/ph bin
+	@cp zpr-compiler/target/debug/zplc bin
+	@cp zpr-visaservice/core/build/vservice bin
+	@docker build -t alohagarage/zpr:latest .
+
 pki:
 	@python3 scripts/gen_pki.py
 

@@ -20,8 +20,14 @@ pull:
 	else \
 		git clone git@github.com:org-zpr/zpr-visaservice.git; \
 	fi
+	@if [ -d "zpr-bas/.git" ]; then \
+		echo "zpr-bas already pulled"; \
+	else \
+		git clone git@github.com:org-zpr/zpr-bas.git; \
+	fi
 
-build: build-core build-compiler build-visaservice
+
+build: build-core build-compiler build-visaservice build-bas
 
 build-core:
 	@cd zpr-core && make it-gone && make it-so
@@ -32,9 +38,13 @@ build-compiler:
 build-visaservice:
 	@cd zpr-visaservice && make clean && make build
 
+build-bas:
+	@cd zpr-bas && make clean && make build
+
 build-image:
 	@mkdir -p bin
 	@cp zpr-core/adapter/ph/target/debug/ph bin
+	@cp zpr-bas/target/debug/bas bin
 	@cp zpr-compiler/target/debug/zplc bin
 	@cp zpr-visaservice/core/build/vservice bin
 	@docker build -t alohagarage/zpr:nightly .

@@ -19,4 +19,4 @@ exec /app/bin/vservice -c /authority/vs-config.yaml -p /authority/zpr-full-acces
 sleep 20
 
 # Start adapter which will immeidately try to connect to the node.
-exec /app/bin/ph-no-uring adapter -c /authority/adapter-vs-conf.toml --debug all
+exec /app/bin/ph adapter -c /authority/adapter-vs-conf.toml --debug all

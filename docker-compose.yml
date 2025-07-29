@@ -17,7 +17,7 @@ services:
         ipv4_address: 129.6.7.100
 
   visa-service:
-    image: alohagarage/zpr:latest
+    image: alohagarage/zpr:nightly
     platform: linux/amd64
     container_name: visa-service
     command: ["/entrypoint.sh"]

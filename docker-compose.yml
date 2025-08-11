@@ -1,6 +1,6 @@
 services:
   node:
-    image: alohagarage/zpr:nightly
+    image: alohagarage/zpr:m4
     platform: linux/amd64
     container_name: node
     command: ["/entrypoint.sh"]
@@ -17,7 +17,7 @@ services:
         ipv4_address: 129.6.7.100
 
   visa-service:
-    image: alohagarage/zpr:latest
+    image: alohagarage/zpr:m4
     platform: linux/amd64
     container_name: visa-service
     command: ["/entrypoint.sh"]

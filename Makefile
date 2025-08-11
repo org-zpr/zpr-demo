@@ -47,7 +47,7 @@ build-image:
 	@cp zpr-bas/target/debug/bas bin
 	@cp zpr-compiler/target/debug/zplc bin
 	@cp zpr-visaservice/core/build/vservice bin
-	@docker build -t alohagarage/zpr:nightly .
+	@docker build -t alohagarage/zpr:m4 .
 
 docker-image: pull build build-image
 

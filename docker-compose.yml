@@ -15,6 +15,8 @@ services:
     networks:
       substrate:
         ipv4_address: 129.6.7.100
+    ports:
+      - "65000:5000/udp"
 
   visa-service:
     image: alohagarage/zpr:m4

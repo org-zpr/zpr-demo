@@ -1,5 +1,6 @@
 *.swp
 *.pyc
+bin/
 zpr-bas/
 zpr-compiler/
 zpr-core/

@@ -11,4 +11,9 @@ RUN apt-get update && apt-get install -y \
     ca-certificates
 # Set default workdir
 WORKDIR /app
+
+# These copy into {WORKDIR}/{dname}
 COPY bin bin
+COPY db db
+COPY certs certs
+

@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import argparse
 from pathlib import Path
@@ -14,7 +15,7 @@ def write_file(path, content):
         f.write(content)
 
 def is_client_adapter(name):
-    return name.startswith("adapter") or name == "vs" or name == "web"
+    return name.startswith("adapter") or name == "vs" or name == "web" or name == "cli" or name == "bas"
 
 def generate_authority():
     authority_dir = Path("authority")
@@ -55,6 +56,8 @@ def generate_bootstrap_keys(node):
     run(f"openssl rsa -pubout -in {priv_key} -out {pub_key}")
 
 def main():
+    print("WARNING BROKEN - does not generate bas,web,cli,admin or bas keys FIXME")
+    sys.exit(1)
     parser = argparse.ArgumentParser(description="Generate ZPRnet artifacts")
     parser.add_argument("--nodes", nargs="+", required=True, help="List of node names")
     args = parser.parse_args()

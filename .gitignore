@@ -1,2 +1,7 @@
 *.swp
 *.pyc
+zpr-bas/
+zpr-compiler/
+zpr-core/
+zpr-visaservice/
+

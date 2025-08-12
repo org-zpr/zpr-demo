@@ -37,6 +37,27 @@ services:
       substrate:
         ipv4_address: 129.6.7.101
 
+  bas:
+    image: alohagarage/zpr:m4
+    platform: linux/amd64
+    container_name: bas
+    command: ["/entrypoint.sh"]
+    volumes:
+      - ./authority:/authority
+      - ./docker-bas/entrypoint.sh:/entrypoint.sh
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    privileged: true
+    depends_on:
+      - node
+      - visa-service
+    networks:
+      substrate:
+        ipv4_address: 129.6.7.102
+
+
 # admin-proxy:
 #   image: alpine/socat
 #   container_name: admin-proxy

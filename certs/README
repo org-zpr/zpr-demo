@@ -1,0 +1,5 @@
+Certs used by the BAS server.
+To regenerate:
+
+  $ openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out tlscert.crt -keyout tlskey.key
+

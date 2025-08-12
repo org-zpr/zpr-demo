@@ -16,12 +16,48 @@ This repo includes dummy keys and certs in the `/authority` directory.
 
 # Milestone 4
 
+
+## Setup
+
+For now you need to build stuff on a local ubuntu 24.04 linux machine in
+order to get the correct code.  So do:
+
+```bash
+make build
+make build-image
+# above will fail with permission error, so then do:
+sudo docker build -t alohagarage/zpr:m4
+```
+
+
+## Run the Demo
+
+Then to start the container: `sudo make up`
+
 The docker image starts three containers:
 - Node
 - Visa service plus adapter
 - BAS plus adapter
 
 The node exposes its docking port on the host OS at port `65000`. 
+
+
+### Start VM, run the web service in it.
+
+Now create a VM (make sure forwarding woks, etc) start a webserver on port 80
+and connect the web adapter:
+
+```bash
+sudo ph adapter -d all -c authority/adapter-web-conf.toml
+```
+
+Note that the `node_addr` setting in the conf file above must be set to 
+`<HOST-IP-ADDR>:65000`.
+
+We assume in this doc that the web server has the rfc 0-500 collection.
+
+
+### Connect as an Admin
 
 From the guest OS you can now connect as the admin by pointing to the
 `adapter-admin-conf.toml` file.  Eg:
@@ -43,5 +79,22 @@ bas.zpr.org (created: 2025-08-12T16:16:58Z) @ fd5a:5052:1:1::1
 admin.zpr.org (created: 2025-08-12T16:17:30Z) @ fd5a:5052:1:1::2
 ```
 
-TODO: Create a local VM and start a web service
-TODO: Then connect as the client and talk to the web service
+Connected as the admin adapter you cannot access the web service.
+So, for example, this will fail:
+
+```bash
+curl http://\[<ZPR-ADDRESS>\]/rfc1.txt
+```
+
+So kill the admin adapter on the host and re-connect as the "cli" adapter.
+
+
+### Connect as a client
+
+```bash
+sudo ph adapter -d all -c authority/adapter-cli-conf.toml
+```  
+
+Now try the above `curl` command again and it should work.
+
+

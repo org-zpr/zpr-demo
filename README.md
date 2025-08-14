@@ -39,7 +39,11 @@ The docker image starts three containers:
 - Visa service plus adapter
 - BAS plus adapter
 
-The node exposes its docking port on the host OS at port `65000`. 
+The node exposes its docking port on the host OS at port `65000`. The config
+files for the "cli", "admin", and "web" adapters (all in the `authority/`
+directory) are setup with the `node_addr` set to `127.0.0.1:65000` -- that is
+correct only if connecting from the host OS. Connecting from a VM or whereever
+will require overriding that value.
 
 
 ### Start VM, run the web service in it.
@@ -59,14 +63,14 @@ We assume in this doc that the web server has the rfc 0-500 collection.
 
 ### Connect as an Admin
 
-From the guest OS you can now connect as the admin by pointing to the
+From the host OS you can now connect as the admin by pointing to the
 `adapter-admin-conf.toml` file.  Eg:
 
 ```bash
 sudo ph adapter -d all -c authority/adapter-admin-conf.toml
 ```  
 
-And with that you will get privledges to talk to the visa service using
+And with that you will get privileges to talk to the visa service using
 `vs-admin`.  Eg,
 
 

@@ -14,11 +14,13 @@ info:
 
 policy: $(OBJS)
 
+clean:
+	rm -rf $(OBJS)
 
 %.bin: %.zpl %.zplc
 	$(ZPLC) -k $(KEY) $<
 
 
-.PHONY: info policy
+.PHONY: info policy clean
 
 .DEFAULT_GOAL: info

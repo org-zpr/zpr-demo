@@ -57,7 +57,8 @@ pki:
 	@python3 scripts/gen_pki.py
 
 policy:
-	./bin/zplc -k $(CONFIG)/authority/zpr-rsa-key.pem $(CONFIG)/policies/policy.zpl
+	$(MAKE) -C authority clean
+	$(MAKE) ZPLC=../bin/zplc -C authority policy
 
 up:
 	docker compose down --volumes --remove-orphans; docker network prune -f; docker --debug compose up --build

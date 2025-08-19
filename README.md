@@ -16,11 +16,11 @@ This repo includes dummy keys and certs in the `/authority` directory.
 
 # Milestone 4
 
-
 ## Setup
 
 For now you need to build stuff on a local ubuntu 24.04 linux machine in
-order to get the correct code.  So do:
+order to get the correct code.  The demo grabs the code tagged `demo-m4`
+from each reposiotory.  Do:
 
 ```bash
 make build

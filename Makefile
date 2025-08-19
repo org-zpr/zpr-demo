@@ -1,7 +1,7 @@
 BINARIES=node vservice adapter zpc zpr-pki
 CONFIG=config
 SCRIPTS=scripts
-CORE_BRANCH=mk/m4
+TAG=demo-m4
 
 all: pull build pki
 
@@ -31,16 +31,19 @@ pull:
 build: build-core build-compiler build-visaservice build-bas
 
 build-core:
-	@cd zpr-core && git fetch && git checkout $(CORE_BRANCH) && git pull origin $(CORE_BRANCH)
+	@cd zpr-core && git fetch && git checkout $(TAG) && git pull origin $(TAG)
 	@cd zpr-core/adapter/ph && make
 
 build-compiler:
+	@cd zpr-compiler && git fetch && git checkout $(TAG) && git pull origin $(TAG)
 	@cd zpr-compiler && make clean && make build
 
 build-visaservice:
+	@cd zpr-visaservice && git fetch && git checkout $(TAG) && git pull origin $(TAG)
 	@cd zpr-visaservice && make clean && make build
 
 build-bas:
+	@cd zpr-bas && git fetch && git checkout $(TAG) && git pull origin $(TAG)
 	@cd zpr-bas && make clean && make build
 
 build-image:

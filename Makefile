@@ -1,69 +1,80 @@
-BINARIES=node vservice adapter zpc zpr-pki
-CONFIG=config
-SCRIPTS=scripts
+VERSION ?= `date +%Y%m%d`
 
-all: pull build pki
+# ZPRSRCDIR - Where the ZPR sources are built.
+ZPRSRCDIR=src
 
-pull:
-	@if [ -d "zpr-core/.git" ]; then \
-		echo "zpr-core already pulled"; \
-	else \
-		git clone git@github.com:org-zpr/zpr-core.git; \
-	fi
-	@if [ -d "zpr-compiler/.git" ]; then \
-		echo "zpr-compiler already pulled"; \
-	else \
-		git clone git@github.com:org-zpr/zpr-compiler.git; \
-	fi
-	@if [ -d "zpr-visaservice/.git" ]; then \
-		echo "zpr-visaservice already pulled"; \
-	else \
-		git clone git@github.com:org-zpr/zpr-visaservice.git; \
-	fi
-	@if [ -d "zpr-bas/.git" ]; then \
-		echo "zpr-bas already pulled"; \
-	else \
-		git clone git@github.com:org-zpr/zpr-bas.git; \
-	fi
+# RELEASEDIR - Where we collect all the files for this release.
+RELEASEDIR=release
+
+# CONFIGIDR - Where the credentials and bas are created/configured.
+CONFIGDIR=config
 
 
-build: build-core build-compiler build-visaservice build-bas
+# POLICY - What policy to compile
+POLICY=demo-20250919.zpl
 
-build-core:
-	@cd zpr-core && make it-gone && make it-so
 
-build-compiler:
-	@cd zpr-compiler && make clean && make build
+# The config directory under release
+RCONFDIR=$(RELEASEDIR)/conf
 
-build-visaservice:
-	@cd zpr-visaservice && make clean && make build
 
-build-bas:
-	@cd zpr-bas && make clean && make build
 
-build-image:
-	@mkdir -p bin
-	@cp zpr-core/adapter/ph/target/debug/ph bin
-	@cp zpr-bas/target/debug/bas bin
-	@cp zpr-compiler/target/debug/zplc bin
-	@cp zpr-visaservice/core/build/vservice bin
-	@docker build -t alohagarage/zpr:nightly .
+.PHONY: info
+info:
+	@echo 
+	@echo "This makefile is for building a ZPR demo release. Access to all"
+	@echo "the relevant ZPR repositories and build tools is required."
+	@echo
+	@echo "make options:"
+	@echo "  make release - create a new zpr demo release"
+	@echo
+	@echo "  make zprbins - pull and build the zpr tools required"
+	@echo "  make creds   - create credentials for the demo network"
+	@echo "  make configs - move all the config material into the release directory"
+	@echo "  make policy  - compile the policy in release directory"
+	@echo
 
-docker-image: pull build build-image
 
-pki:
-	@python3 scripts/gen_pki.py
+.PHONY: release
+release: clean-release zprbins creds configs policy
+	@echo "TODO still need to port over docker stuff."
 
+.PHONY: zprbins
+zprbins:
+	$(MAKE) -C $(ZPRSRCDIR) 
+
+.PHONY: creds
+creds:
+	$(MAKE) -C $(CONFIGDIR) creds
+	$(MAKE) -C $(CONFIGDIR) basdb
+
+.PHONY: configs
+configs:
+	@mkdir -p $(RCONFDIR)
+	@cp $(CONFIGDIR)/build/keys/* $(RCONFDIR)
+	@cp $(CONFIGDIR)/build/authority/* $(RCONFDIR)
+	@cp $(CONFIGDIR)/zprnet/* $(RCONFDIR)
+	@rm -rf $(RELEASEDIR)/db
+	@mv $(CONFIGDIR)/db $(RELEASEDIR)/
+
+
+.PHONY: policy
 policy:
-	./bin/zplc -k $(CONFIG)/authority/zpr-rsa-key.pem $(CONFIG)/policies/policy.zpl
+	$(ZPRSRCDIR)/build/bin/zplc -k $(RCONFDIR)/zpr-rsa-key.pem $(RCONFDIR)/$(POLICY)
 
-up:
-	docker compose down --volumes --remove-orphans; docker network prune -f; docker --debug compose up --build
 
-clean:
-	@rm -rf zpr-{core,compiler,visaservice}
+# The release target will wipe the release/ dir.
+.PHONY: clean-release
+clean-release:
+	rm -rf $(RELEASEDIR)
+	@mkdir $(RELEASEDIR)
+	@echo "$(VERSION)" >$(RELEASEDIR)/VERSION
 
-down:
-	docker compose down
 
-reset: down pki policy up
+.PHONY: clean
+clean: clean-release
+	$(MAKE) -C $(ZPRSRCDIR) clean
+	$(MAKE) -C $(CONFIGDIR) clean
+
+
+.DEFAULT_GOAL := info

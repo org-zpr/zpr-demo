@@ -12,7 +12,7 @@ CONFIGDIR=config
 
 # POLICY - What policy to compile
 POLICY=demo-20250919.zpl
-
+POLICYBIN = $(POLICY:.zpl=.bin)
 
 # The config directory under release
 RCONFDIR=$(RELEASEDIR)/conf
@@ -37,7 +37,8 @@ info:
 
 .PHONY: release
 release: clean-release zprbins creds configs policy
-	@echo "TODO still need to port over docker stuff."
+	@echo "To build a new docker image cd to 'docker' dir and use Makefile there."
+
 
 .PHONY: zprbins
 zprbins:
@@ -61,7 +62,8 @@ configs:
 .PHONY: policy
 policy:
 	$(ZPRSRCDIR)/build/bin/zplc -k $(RCONFDIR)/zpr-rsa-key.pem $(RCONFDIR)/$(POLICY)
-
+	@echo "copying policy binary to initial.bin for the docker..."
+	cp $(RCONFDIR)/$(POLICYBIN) $(RCONFDIR)/initial.bin
 
 # The release target will wipe the release/ dir.
 .PHONY: clean-release

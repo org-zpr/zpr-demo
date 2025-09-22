@@ -1,5 +1,3 @@
-
-
 ZPR_IMAGE_VERSION ?= $(USER)_$(shell date +%Y%m%d)
 IMAGE_BASE_NAME=alohagarage/zpr
 

@@ -15,8 +15,9 @@ ip link set tun9 up
 # XXX wait on node
 sleep 7
 
-# TODO: can we sed the policy name into here from Makefile?
-exec /app/bin/vservice -c /conf/vs-config.yaml -p /conf/demo-20250919.bin &
+# Note that the top-level makefile ensures that the policy binary
+# is renamed to 'initial.bin'.
+exec /app/bin/vservice -c /conf/vs-config.yaml -p /conf/initial.bin &
 
 # XXX Let visa service intialize...
 sleep 7

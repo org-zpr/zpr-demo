@@ -1,69 +1,116 @@
-BINARIES=node vservice adapter zpc zpr-pki
-CONFIG=config
-SCRIPTS=scripts
+VERSION ?= `date +%Y%m%d`
 
-all: pull build pki
+# ZPRSRCDIR - Where the ZPR sources are built.
+ZPRSRCDIR=src
 
-pull:
-	@if [ -d "zpr-core/.git" ]; then \
-		echo "zpr-core already pulled"; \
-	else \
-		git clone git@github.com:org-zpr/zpr-core.git; \
-	fi
-	@if [ -d "zpr-compiler/.git" ]; then \
-		echo "zpr-compiler already pulled"; \
-	else \
-		git clone git@github.com:org-zpr/zpr-compiler.git; \
-	fi
-	@if [ -d "zpr-visaservice/.git" ]; then \
-		echo "zpr-visaservice already pulled"; \
-	else \
-		git clone git@github.com:org-zpr/zpr-visaservice.git; \
-	fi
-	@if [ -d "zpr-bas/.git" ]; then \
-		echo "zpr-bas already pulled"; \
-	else \
-		git clone git@github.com:org-zpr/zpr-bas.git; \
-	fi
+# ZPRBINDIR - Where the ZPR binaries end up after build.
+ZPRBINDIR=$(ZPRSRCDIR)/build/bin
+
+# RELEASEDIR - Where we collect all the files for this release.
+RELEASEDIR=release
+
+# Temporary build files (including artifact tgz)
+BUILDDIR=build
+
+# CONFIGIDR - Where the credentials and bas are created/configured.
+CONFIGDIR=config
+
+# POLICY - What policy to compile
+POLICY=demo-20250919.zpl
+POLICYBIN = $(POLICY:.zpl=.bin)
+
+# RCONFDIR - The config directory under release
+RCONFDIR=$(RELEASEDIR)/conf
+
+# ZPRARTIFACTS - Where we put the binaries to distributed with the docker.
+# This gets tar'd up.
+ZPRARTIFACTS=zpr-$(VERSION)
+
+# RBINDIR - The artifacts directory under build 
+RBINDIR=$(BUILDDIR)/$(ZPRARTIFACTS)
 
 
-build: build-core build-compiler build-visaservice build-bas
+ARCH := $(shell uname -m)
+RELEASE_TGZ := "release-$(VERSION)-linux-$(ARCH).tar.gz"
 
-build-core:
-	@cd zpr-core && make it-gone && make it-so
 
-build-compiler:
-	@cd zpr-compiler && make clean && make build
+.PHONY: info
+info:
+	@echo 
+	@echo "This makefile is for building a ZPR demo release. Access to all"
+	@echo "the relevant ZPR repositories and build tools is required."
+	@echo
+	@echo "For zprbins and release you must set TAG variable to the TAG"
+	@echo "that should be checked out from the various source repos."
+	@echo
+	@echo "make options:"
+	@echo "  make release - create a new zpr demo release"
+	@echo
+	@echo "  make zprbins - pull and build the zpr tools required"
+	@echo "  make creds   - create credentials for the demo network"
+	@echo "  make configs - move all the config material into the release directory"
+	@echo "  make policy  - compile the policy in release directory"
+	@echo
 
-build-visaservice:
-	@cd zpr-visaservice && make clean && make build
 
-build-bas:
-	@cd zpr-bas && make clean && make build
+.PHONY: release
+release: clean-release zprbins creds configs policy artifacts
+	@echo "To build a new docker image cd to 'docker' dir and use Makefile there."
 
-build-image:
-	@mkdir -p bin
-	@cp zpr-core/adapter/ph/target/debug/ph bin
-	@cp zpr-bas/target/debug/bas bin
-	@cp zpr-compiler/target/debug/zplc bin
-	@cp zpr-visaservice/core/build/vservice bin
-	@docker build -t alohagarage/zpr:nightly .
 
-docker-image: pull build build-image
+.PHONY: zprbins
+zprbins:
+	$(MAKE) -C $(ZPRSRCDIR) 
 
-pki:
-	@python3 scripts/gen_pki.py
 
+.PHONY: creds
+creds:
+	$(MAKE) -C $(CONFIGDIR) creds
+	$(MAKE) -C $(CONFIGDIR) basdb
+	@mkdir -p $(RELEASEDIR)
+	@rm -rf $(RELEASEDIR)/db
+	@mv $(CONFIGDIR)/db $(RELEASEDIR)/
+
+
+.PHONY: configs
+configs:
+	@mkdir -p $(RCONFDIR)
+	@cp $(CONFIGDIR)/build/keys/* $(RCONFDIR)
+	@cp $(CONFIGDIR)/build/authority/* $(RCONFDIR)
+	@cp $(CONFIGDIR)/zprnet/* $(RCONFDIR)
+
+
+.PHONY: policy
 policy:
-	./bin/zplc -k $(CONFIG)/authority/zpr-rsa-key.pem $(CONFIG)/policies/policy.zpl
+	$(ZPRSRCDIR)/build/bin/zplc -k $(RCONFDIR)/zpr-rsa-key.pem $(RCONFDIR)/$(POLICY)
+	@echo "copying policy binary to initial.bin for the docker..."
+	cp $(RCONFDIR)/$(POLICYBIN) $(RCONFDIR)/initial.bin
 
-up:
-	docker compose down --volumes --remove-orphans; docker network prune -f; docker --debug compose up --build
 
-clean:
-	@rm -rf zpr-{core,compiler,visaservice}
+.PHONY: artifacts
+artifacts:
+	@mkdir -p $(RBINDIR)
+	@cp $(ZPRBINDIR)/ph $(RBINDIR)
+	@cp $(ZPRBINDIR)/vs-admin $(RBINDIR)
+	@cp $(ZPRBINDIR)/zpdump $(RBINDIR)
+	@cp $(ZPRBINDIR)/zplc $(RBINDIR)
+	@cd $(BUILDDIR) && tar zcvf $(RELEASE_TGZ) $(ZPRARTIFACTS)
+	@echo "Created artifact bundle in $(BUILDDIR)/$(RELEASE_TGZ)"
 
-down:
-	docker compose down
 
-reset: down pki policy up
+# The release target will wipe the release/ dir.
+.PHONY: clean-release
+clean-release:
+	rm -rf $(RELEASEDIR)
+	@mkdir $(RELEASEDIR)
+	@echo "$(VERSION)" >$(RELEASEDIR)/VERSION
+
+
+.PHONY: clean
+clean: clean-release
+	@rm -rf $(BUILDDIR)
+	$(MAKE) TAG=foo -C $(ZPRSRCDIR) clean
+	$(MAKE) -C $(CONFIGDIR) clean
+
+
+.DEFAULT_GOAL := info

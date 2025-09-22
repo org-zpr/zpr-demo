@@ -1,0 +1,64 @@
+services:
+  node:
+    image: ${IMAGE_NAME}
+    platform: linux/amd64
+    container_name: node
+    command: ["/entrypoint.sh"]
+    volumes:
+      - ../release/conf:/conf
+      - ./docker-node/entrypoint.sh:/entrypoint.sh
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    privileged: true
+    networks:
+      substrate:
+        ipv4_address: 129.6.7.100
+    ports:
+      - "65000:5000/udp"
+
+  visa-service:
+    image: ${IMAGE_NAME}
+    platform: linux/amd64
+    container_name: visa-service
+    command: ["/entrypoint.sh"]
+    volumes:
+      - ../release/conf:/conf
+      - ./docker-vs/entrypoint.sh:/entrypoint.sh
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    privileged: true
+    depends_on:
+      - node
+    networks:
+      substrate:
+        ipv4_address: 129.6.7.101
+
+  bas:
+    image: ${IMAGE_NAME}
+    platform: linux/amd64
+    container_name: bas
+    command: ["/entrypoint.sh"]
+    volumes:
+      - ../release/conf:/conf
+      - ./docker-bas/entrypoint.sh:/entrypoint.sh
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    privileged: true
+    depends_on:
+      - node
+      - visa-service
+    networks:
+      substrate:
+        ipv4_address: 129.6.7.102
+
+networks:
+  substrate:
+    ipam:
+      config:
+        - subnet: 129.6.7.0/24

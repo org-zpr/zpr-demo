@@ -1,0 +1,23 @@
+[global]
+name = "cli"
+ca_file = "auth-ca.crt"
+certificate_file = "adapter-cli-noise.crt"
+private_key_file = "adapter-cli-noise.key"
+
+[adapter]
+# This config is designed to be used on the host OS.
+# So attaches to the exposed dock port.
+node_addr = "127.0.0.1:65000"
+node_public_key_file = "node-noise-pub.pem"
+
+[authentication]
+# This uses BAS to authenticate.
+bas_key = "adapter-cli-bas.key"
+
+
+
+
+
+
+
+

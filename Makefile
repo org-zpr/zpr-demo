@@ -16,7 +16,7 @@ BUILDDIR=build
 CONFIGDIR=config
 
 # POLICY - What policy to compile
-POLICY=demo-20250919.zpl
+POLICY=demo.zpl
 POLICYBIN = $(POLICY:.zpl=.bin)
 
 # RCONFDIR - The config directory under release

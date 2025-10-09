@@ -1,82 +1,22 @@
-# Overview
+# ZPR Demo
 
-This repo contains scripts to create a zpr demo release which includes a docker
-container running the core services, plus a couple of adapter configuration
-files to enable connectivity into the container.
+This repository contains support files for the containerized ZPR Demo as well as
+configuration and scripts used to create new versions of the demo.
 
-
-**How to build a release** describes how to use this repo to create a new release
-Note that this requires access to all the relevant ZPR repositories.
-
-**How to run the demo** describes how to get the demo running using pre-built
-configurations and binaries.
+The rest of this file is about running the demo.  If you need to build a new release see 
+[README-DEV.md](https://github.com/org-zpr/zpr-demo/blob/main/README-DEV.md).
 
 
+# Latest Demo Release
 
+The latest release will be here in `main` and in a branch named `demo-YYYYMMDD`.
 
-# How to build a release
+The demo consists of a container image, some binaries and some configuration
+files.
 
-## Setup
-
-The makefile will default to using todays date as the version number.
-
-For now you need to build stuff on a local ubuntu 24.04 linux machine in
-order to get the correct code.
-
-You need to first tag all these repos with a tag like `demo-VERSION`:
-* `zpr-core`
-* `zpr-compiler`
-* `zpr-visaservice`
-* `zpr-bas`
-
-Also verify that the `POLICY` variable in the makefile is set to the correct
-ZPL file.
-
-
-## Build everything
-
-```bash
-make TAG=demo-VERSION release
-```
-
-Or you can run each make separately:
-* `make TAG=demo-VERSION zprbins`
-* `make creds` -- You will be prompted during creating of certificates.
-  * The first passpharse you enter is for the local certificate authority. You will need to enter this every time we create a certificate.
-  * Certificate 1 is for the CA itself.  Typical CN value is `auth.zpr`.
-  * Certificate 2 is for the ZPR keypair.  Typical CN value is `root.zpr`. No need for a challenge password or optional company name.
-  * Certificate 3 is for TLS connection to bas.  Use CN of `bas.zpr.org`.
-* `make configs`
-* `make policy`
-* `make artifacts`
-  * This creates a tgz archive of the ZPR binaries.
-
-
-## Create the docker image
-
-In the `docker/` subdirectory, run:
-
-    sudo make build-image
-
-This will tag the image with `root_VERSION`.  `VERSION` defaults to todays date. See `docker/Makefile` for
-how to override this.
-
-
-## Test it
-
-Launch the image with:
-
-    sudo make up
-
-After about 20s or so all three containers should be running: Node, Visa Serivice and BAS.
-
-
-## Save your branch
-
-TODO: Current idea is to keep branches for each demo version.  Maybe also merge latest to main?
-
-So name your branch according to the convention, eg, `demo-20250922` and push it.
-
+- The container image can be downloaded from GNCR here: (TODO)
+- The release binaries are in the [releases area](https://github.com/org-zpr/zpr-demo/releases).
+- The configuration files are in the repo in [release/conf](https://github.com/org-zpr/zpr-demo/tree/main/release/conf).
 
 
 # How to run the demo
@@ -110,9 +50,9 @@ Get the correct binaries from the github *releases* section.
 ### Get and Launch the Docker container.
 
 TODO: How to find the docker image?
-TODO: How to run it? I presume you still need the compose file?
 
-Then to start the container: `sudo make up`
+
+Then to start the container: `sudo make ZPR_IMAGE_VERSION=root_20251006 up`
 
 The docker image starts three containers:
 - Node

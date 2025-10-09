@@ -8,7 +8,6 @@ order = ["hosts", "dns"]
 "node0.overlay" = "129.6.7.100" # docker
 
 [nodes.node]
-key = "DNBguc3HqkzfLys68PWm2CnWSA/IhAIFiHFII9cFrFo="
 provider = [ ["endpoint.zpr.adapter.cn", "node.zpr.org"]]
 zpr_address = "node0.zpr"
 interfaces = ["in1"]
@@ -21,8 +20,8 @@ cert_path = "auth-ca.crt"
 api = "validation/2"
 client = "AuthService"
 cert_path = "bas-tls.crt"
-returns_attributes = [ "user.color", "user.bas_id", "service.content" ]
-identity_attributes = ["user.bas_id"]
+returns_attributes = [ "color -> user.color", "bas_id -> user.bas_id", "content -> service.content" ]
+identity_attributes = ["bas_id"]
 provider = [ [ "endpoint.zpr.adapter.cn", "bas.zpr.org" ] ]
 
 [visa_service]

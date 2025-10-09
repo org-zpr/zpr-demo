@@ -49,6 +49,21 @@ In the `docker/` subdirectory, run:
 This will tag the image with `root_VERSION`.  `VERSION` defaults to todays date. See `docker/Makefile` for
 how to override this.
 
+Use a personal access token (classic) with the `write:packages` scope.  Login to ghcr:
+
+    echo $TOKEN | sudo docker login ghcr.io -u <GITHUB_USER_NAME> --password-stdin
+
+Then tag your local image:
+
+    sudo docker tag org.zpr/zprdemo:<ZPR_IMAGE_VERSION> ghcr.io/org-zpr/zpr-demo/zprdemo:latest
+
+And push:
+
+    sudo docker push ghcr.io/org-zpr/zpr-demo/zprdemo:latest
+
+
+
+
 
 ## Test it
 

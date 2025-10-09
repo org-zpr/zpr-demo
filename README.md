@@ -3,7 +3,7 @@
 This repository contains support files for the containerized ZPR Demo as well as
 configuration and scripts used to create new versions of the demo.
 
-The rest of this file is about running the demo.  If you need to build a new release see 
+The rest of this file is about running the demo.  If you need to build a new release see
 [README-DEV.md](https://github.com/org-zpr/zpr-demo/blob/main/README-DEV.md).
 
 
@@ -14,7 +14,7 @@ The latest release will be here in `main` and in a branch named `demo-YYYYMMDD`.
 The demo consists of a container image, some binaries and some configuration
 files.
 
-- The container image can be downloaded from GHCR here: (TODO)
+- The container image can be downloaded from GHCR in the [org-zpr packages area](https://github.com/orgs/org-zpr/packages/container/package/zpr-demo%2Fzprdemo).
 - The release binaries are in the [releases area](https://github.com/org-zpr/zpr-demo/releases).
 - The configuration files are in the repo in [release/conf](https://github.com/org-zpr/zpr-demo/tree/main/release/conf).
 
@@ -30,7 +30,7 @@ To run the demo you need three things:
 All three components must have the same version. The version is a timestamp
 in `YYYYMMDD` format.  For example, `20250919`.
 
-You can find the docker image in **TBD**.
+You can find the docker image in the [org-zpr packages area](https://github.com/orgs/org-zpr/packages/container/package/zpr-demo%2Fzprdemo).
 
 The release configuration will be in this repo in a [branch](https://github.com/org-zpr/zpr-demo/branches)
 named `demo-VERSION`, where `VERSION` is the version number.
@@ -49,10 +49,7 @@ Get the correct binaries from the github *releases* section.
 
 ### Get and Launch the Docker container.
 
-TODO: How to find the docker image?
-
-
-Then to start the container: `sudo make ZPR_IMAGE_VERSION=root_20251006 up`
+Then to start the container: `sudo make ZPR_IMAGE_VERSION=latest up`
 
 The docker image starts three containers:
 - Node

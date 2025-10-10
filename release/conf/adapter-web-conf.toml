@@ -1,17 +1,11 @@
 [global]
-name = "web"
 ca_file = "auth-ca.crt"
-certificate_file = "adapter-web-noise.crt"
-private_key_file = "adapter-web-noise.key"
-# Note does not have a static address.
 
 [adapter]
+name = "web.zpr.org"
 # This config is designed to be used on the host OS.
 # So attaches to the exposed dock port.
-# node_addr = "127.0.0.1:65000"
-
-# On mathias machine, "web" is running in VM, so connect to host IP.
-node_addr = "192.168.6.197:65000"
+node_addr = "127.0.0.1:65000"
 node_public_key_file = "node-noise-pub.pem"
 
 [authentication]

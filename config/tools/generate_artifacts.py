@@ -12,11 +12,9 @@ KEYDIRNAME="keys"
 
 NODES = [("node", "node.zpr.org")]
 
-ADAPTERS = [("admin", "admin.zpr.org"),
-            ("bas", "bas.zpr.org"),
-            ("cli", "cli.zpr.org"),
-            ("vs", "vs.zpr"),
-            ("web", "web.zpr.org")]
+# Adapters that need a noise key and cert.
+ADAPTERS = [("vs", "vs.zpr")]
+
 
 BOOTSTRAPS = [("vs", "vs.zpr"),
               ("bas", "bas.zpr.org")]
@@ -30,11 +28,6 @@ def run(command, shell=True):
 def write_file(path, content):
     with open(path, "w") as f:
         f.write(content)
-
-def is_client_adapter(name):
-    return name.startswith("adapter") or name == "vs" or name == "web"
-
-
 
 def makedirs(builddir):
     Path(builddir).mkdir(parents=True, exist_ok=True)

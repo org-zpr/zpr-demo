@@ -1,11 +1,9 @@
 [global]
-name = "bas"
 ca_file = "auth-ca.crt"
-certificate_file = "adapter-bas-noise.crt"
-private_key_file = "adapter-bas-noise.key"
 
 [adapter]
 # Runs inside docker
+name = "bas.zpr.org"
 node_addr = "129.6.7.100:5000"
 node_public_key_file = "node-noise-pub.pem"
 bootstrap_key = "bas-bs-rsa-key.pem"

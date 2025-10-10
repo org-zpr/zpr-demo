@@ -1,10 +1,8 @@
 [global]
-name = "admin"
 ca_file = "auth-ca.crt"
-certificate_file = "adapter-admin-noise.crt"
-private_key_file = "adapter-admin-noise.key"
 
 [adapter]
+name = "admin.zpr.org"
 # This config is designed to be used on the host OS.
 # So attaches to the exposed dock port.
 node_addr = "127.0.0.1:65000"

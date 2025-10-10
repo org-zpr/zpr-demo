@@ -1,10 +1,8 @@
 [global]
-name = "cli"
 ca_file = "auth-ca.crt"
-certificate_file = "adapter-cli-noise.crt"
-private_key_file = "adapter-cli-noise.key"
 
 [adapter]
+name = "cli.zpr.org"
 # This config is designed to be used on the host OS.
 # So attaches to the exposed dock port.
 node_addr = "127.0.0.1:65000"

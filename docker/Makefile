@@ -1,5 +1,5 @@
 ZPR_IMAGE_VERSION ?= $(USER)_$(shell date +%Y%m%d)
-IMAGE_BASE_NAME=org.zpr/zprdemo
+IMAGE_BASE_NAME=ghcr.io/org-zpr/zpr-demo/zprdemo
 
 IMAGENAME=$(IMAGE_BASE_NAME):$(ZPR_IMAGE_VERSION)
 

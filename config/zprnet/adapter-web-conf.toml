@@ -3,9 +3,11 @@ ca_file = "auth-ca.crt"
 
 [adapter]
 name = "web.zpr.org"
-# This config is designed to be used on the host OS.
-# So attaches to the exposed dock port.
-node_addr = "127.0.0.1:65000"
+# This config is designed to be used in the VM guest.
+# It must attach to the exposed dock port on the host machine.
+# Adjust node_addr as necessary to refer to the host machine as seen by the VM.
+# (In libvirt, default NAT, the host is 192.168.122.1.)
+node_addr = "192.168.122.1:65000"
 node_public_key_file = "node-noise-pub.pem"
 
 [authentication]

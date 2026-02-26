@@ -17,7 +17,7 @@ sleep 7
 
 # Note that the top-level makefile ensures that the policy binary
 # is renamed to 'initial.bin'.
-exec /app/bin/vservice -c /conf/vs-config.yaml -p /conf/initial.bin &
+exec /app/bin/vs -c /conf/vs-config.toml /conf/initial.bin &
 
 # XXX Let visa service intialize...
 sleep 7

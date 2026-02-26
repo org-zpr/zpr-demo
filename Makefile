@@ -1,5 +1,7 @@
 VERSION ?= `date +%Y%m%d`
 
+USE_DOCKER ?= 0
+
 # ZPRSRCDIR - Where the ZPR sources are built.
 ZPRSRCDIR=src
 
@@ -32,6 +34,16 @@ RBINDIR=$(BUILDDIR)/$(ZPRARTIFACTS)
 
 ARCH := $(shell uname -m)
 RELEASE_TGZ := "release-$(VERSION)-linux-$(ARCH).tar.gz"
+
+ifeq ($(USE_DOCKER),1)
+    _RCONFDIR_ABS := $(abspath $(RCONFDIR))
+    _ZPLC_BIN     := $(abspath $(ZPRBINDIR)/zplc)
+    ZPLC_RUN      = docker run --rm -v "$(_RCONFDIR_ABS):/conf" -v "$(_ZPLC_BIN):/usr/local/bin/zplc" -w /conf zpr/dev-env:latest zplc
+    ZPLC_CONFDIR  = /conf
+else
+    ZPLC_RUN     = $(ZPRBINDIR)/zplc
+    ZPLC_CONFDIR = $(RCONFDIR)
+endif
 
 
 .PHONY: info
@@ -82,7 +94,7 @@ configs:
 
 .PHONY: policy
 policy:
-	$(ZPRSRCDIR)/build/bin/zplc -k $(RCONFDIR)/zpr-rsa-key.pem $(RCONFDIR)/$(POLICY)
+	$(ZPLC_RUN) -k $(ZPLC_CONFDIR)/zpr-rsa-key.pem $(ZPLC_CONFDIR)/$(POLICY)
 	@echo "copying policy binary to initial.bin for the docker..."
 	cp $(RCONFDIR)/$(POLICYBIN) $(RCONFDIR)/initial.bin
 
@@ -90,10 +102,14 @@ policy:
 .PHONY: artifacts
 artifacts:
 	@mkdir -p $(RBINDIR)
+	@cp $(ZPRBINDIR)/bas $(RBINDIR)
 	@cp $(ZPRBINDIR)/ph $(RBINDIR)
+	@cp $(ZPRBINDIR)/ph-cli $(RBINDIR)
+	@cp $(ZPRBINDIR)/vs $(RBINDIR)
 	@cp $(ZPRBINDIR)/vs-admin $(RBINDIR)
 	@cp $(ZPRBINDIR)/zpdump $(RBINDIR)
 	@cp $(ZPRBINDIR)/zplc $(RBINDIR)
+	@cp $(ZPRBINDIR)/zpt $(RBINDIR)
 	@cd $(BUILDDIR) && tar zcvf $(RELEASE_TGZ) $(ZPRARTIFACTS)
 	@echo "Created artifact bundle in $(BUILDDIR)/$(RELEASE_TGZ)"
 

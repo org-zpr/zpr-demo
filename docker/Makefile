@@ -1,7 +1,8 @@
 ZPR_IMAGE_VERSION ?= $(USER)_$(shell date +%Y%m%d)
 IMAGE_BASE_NAME=org.zpr/zprdemo
 
-IMAGENAME=$(IMAGE_BASE_NAME):$(ZPR_IMAGE_VERSION)
+# IMAGENAME=$(IMAGE_BASE_NAME):$(ZPR_IMAGE_VERSION)
+IMAGENAME=ghcr.io/org-zpr/zpr-demo/zprdemo:latest
 
 .PHONY: info
 info:

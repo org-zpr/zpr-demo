@@ -29,11 +29,7 @@ make TAG=demo-VERSION release
 
 Or you can run each make separately:
 * `make TAG=demo-VERSION zprbins`
-* `make creds` -- You will be prompted during creating of certificates.
-  * The first passpharse you enter is for the local certificate authority. You will need to enter this every time we create a certificate.
-  * Certificate 1 is for the CA itself.  Typical CN value is `auth.zpr`.
-  * Certificate 2 is for the ZPR keypair.  Typical CN value is `root.zpr`. No need for a challenge password or optional company name.
-  * Certificate 3 is for TLS connection to bas.  Use CN of `bas.zpr.org`.
+* `make creds` 
 * `make configs`
 * `make policy`
 * `make artifacts`

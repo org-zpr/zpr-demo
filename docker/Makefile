@@ -1,5 +1,4 @@
-
-IMAGENAME ?= ghcr.io/org-zpr/zpr-demo/zprdemo:latest
+IMAGENAME ?= ghcr.io/org-zpr/zpr-demo/zprdemo
 
 # Detect platform from binaries; default to amd64 if none are present.
 DOCKER_PLATFORM := linux/amd64

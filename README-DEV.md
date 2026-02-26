@@ -56,7 +56,7 @@ In the `docker/` subdirectory, run:
     sudo make build-image
 
 
-This will tag the image with `ghcr.io/org-zpr/zpr-demo/zprdemo:latest`. You can
+This will tag the image with `ghcr.io/org-zpr/zpr-demo/zprdemo`. You can
 set the tag to anything you want, see `docker/Makefile` for hints.
 
 Use a personal access token (classic) with the `write:packages` scope.  Login to ghcr:

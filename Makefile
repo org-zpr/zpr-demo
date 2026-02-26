@@ -19,7 +19,7 @@ CONFIGDIR=config
 
 # POLICY - What policy to compile
 POLICY=demo.zpl
-POLICYBIN = $(POLICY:.zpl=.bin)
+POLICYBIN = $(POLICY:.zpl=.bin2)
 
 # RCONFDIR - The config directory under release
 RCONFDIR=$(RELEASEDIR)/conf
@@ -63,7 +63,13 @@ info:
 	@echo "  make configs - move all the config material into the release directory"
 	@echo "  make policy  - compile the policy in release directory"
 	@echo
-
+	@echo "By default this will build on your local host, if instead you want"
+	@echo "to build using the zpr-dev-tools docker image, first make sure that"
+	@echo "the image is available locally as zpr/dev-tools:latest, then"
+	@echo "for example:"
+	@echo 
+	@echo "USE_DOCKER=1 TAG=HEAD make release"
+	@echo
 
 .PHONY: release
 release: clean-release zprbins creds configs policy artifacts
@@ -95,8 +101,8 @@ configs:
 .PHONY: policy
 policy:
 	$(ZPLC_RUN) -k $(ZPLC_CONFDIR)/zpr-rsa-key.pem $(ZPLC_CONFDIR)/$(POLICY)
-	@echo "copying policy binary to initial.bin for the docker..."
-	cp $(RCONFDIR)/$(POLICYBIN) $(RCONFDIR)/initial.bin
+	@echo "copying policy binary to initial.bin2 for the docker..."
+	cp $(RCONFDIR)/$(POLICYBIN) $(RCONFDIR)/initial.bin2
 
 
 .PHONY: artifacts

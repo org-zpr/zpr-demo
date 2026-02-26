@@ -11,4 +11,4 @@ ip addr add fd5a:5052:90de::1/32 dev tun9
 ip link set tun9 up
 
 
-exec /app/bin/ph node -c /conf/node-conf.toml
+exec /app/bin/ph node -c /conf/node-conf.toml --auth-private-key /conf/node-bs-rsa-key.pem

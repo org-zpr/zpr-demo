@@ -31,6 +31,7 @@ dock_node = "node"
 # Docker keys
 "bas.zpr.org" = "bas-bs-rsa-pubkey.pem"
 "vs.zpr" = "vs-bs-rsa-pubkey.pem"
+"node.zpr.org" = "node-bs-rsa-pubkey.pem"
 
 [protocols.ping]
 l4protocol = "iana.ICMP6"

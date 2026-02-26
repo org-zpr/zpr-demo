@@ -12,15 +12,18 @@ ip link set tun9 mtu 1400
 ip addr add fd5a:5052::1/32 dev tun9
 ip link set tun9 up
 
+echo "starting valkey"
+/usr/local/bin/valkey-server &
+
 # XXX wait on node
 sleep 7
 
 # Note that the top-level makefile ensures that the policy binary
-# is renamed to 'initial.bin'.
-exec /app/bin/vs -c /conf/vs-config.toml /conf/initial.bin &
+# is renamed to 'initial.bin2'.
+exec /app/bin/vs --verbose -c /conf/vs-config.toml /conf/initial.bin2 &
 
 # XXX Let visa service intialize...
 sleep 7
 
 # Start adapter which will immeidately try to connect to the node.
-exec /app/bin/ph adapter -c /conf/adapter-vs-conf.toml -l all=DEBUG
+exec /app/bin/ph adapter -c /conf/adapter-vs-conf.toml -l all=INFO

@@ -17,6 +17,7 @@ ADAPTERS = [("vs", "vs.zpr")]
 
 
 BOOTSTRAPS = [("vs", "vs.zpr"),
+              ("node", "node.zpr.org"),
               ("bas", "bas.zpr.org")]
 
 def run(command, shell=True):

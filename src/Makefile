@@ -10,6 +10,16 @@ endif
 BUILDDIR=build
 BINDIR=$(BUILDDIR)/bin
 
+USE_DOCKER ?= 0
+TOOLS_DIR  ?= $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../tools)
+
+# Note that the "build-in-docker" script actually runs `cargo build` not make.
+ifeq ($(USE_DOCKER),1)
+    MAKE_IN = $(TOOLS_DIR)/build-in-docker.sh
+else
+    MAKE_IN = $(MAKE) -C
+endif
+
 
 
 .PHONY: all
@@ -45,20 +55,21 @@ pull:
 build: build-core build-compiler build-visaservice build-bas
 
 
-# We only need ph
-.PHONY: build-code
+# Grab ph and ph-cli
+.PHONY: build-core
 build-core:
 	@mkdir -p $(BINDIR)
 	@cd $(BUILDDIR)/zpr-core && git fetch && git checkout $(TAG) && git pull origin $(TAG)
-	$(MAKE) -C $(BUILDDIR)/zpr-core/adapter/ph 
-	@cp $(BUILDDIR)/zpr-core/adapter/ph/target/debug/ph $(BINDIR)
+	$(MAKE_IN) $(BUILDDIR)/zpr-core
+	@cp $(BUILDDIR)/zpr-core/target/debug/ph $(BINDIR)
+	@cp $(BUILDDIR)/zpr-core/target/debug/ph-cli $(BINDIR)
 
 
 .PHONY: build-compiler
 build-compiler:
 	@mkdir -p $(BINDIR)
 	@cd $(BUILDDIR)/zpr-compiler && git fetch && git checkout $(TAG) && git pull origin $(TAG)
-	$(MAKE) -C $(BUILDDIR)/zpr-compiler
+	$(MAKE_IN) $(BUILDDIR)/zpr-compiler
 	@cp $(BUILDDIR)/zpr-compiler/target/debug/zplc $(BINDIR)
 	@cp $(BUILDDIR)/zpr-compiler/target/debug/zpdump $(BINDIR)
 
@@ -67,17 +78,16 @@ build-compiler:
 build-visaservice:
 	@mkdir -p $(BINDIR)
 	@cd $(BUILDDIR)/zpr-visaservice && git fetch && git checkout $(TAG) && git pull origin $(TAG)
-	$(MAKE) -C $(BUILDDIR)/zpr-visaservice/core
-	@cp $(BUILDDIR)/zpr-visaservice/core/build/vservice $(BINDIR)
-	$(MAKE) -C $(BUILDDIR)/zpr-visaservice/vs-admin 
-	@cp $(BUILDDIR)/zpr-visaservice/vs-admin/target/debug/vs-admin $(BINDIR)
-
+	$(MAKE_IN) $(BUILDDIR)/zpr-visaservice
+	@cp $(BUILDDIR)/zpr-visaservice/target/debug/vs $(BINDIR)
+	@cp $(BUILDDIR)/zpr-visaservice/target/debug/vs-admin $(BINDIR)
+	@cp $(BUILDDIR)/zpr-visaservice/target/debug/zpt $(BINDIR)
 
 .PHONY: build-bas
 build-bas:
 	mkdir -p $(BINDIR)
 	@cd $(BUILDDIR)/zpr-bas && git fetch && git checkout $(TAG) && git pull origin $(TAG)
-	$(MAKE) -C $(BUILDDIR)/zpr-bas
+	$(MAKE_IN) $(BUILDDIR)/zpr-bas
 	@cp $(BUILDDIR)/zpr-bas/target/debug/bas $(BINDIR)
 
 

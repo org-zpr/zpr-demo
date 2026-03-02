@@ -17,6 +17,7 @@ ADAPTERS = [("vs", "vs.zpr")]
 
 
 BOOTSTRAPS = [("vs", "vs.zpr"),
+              ("node", "node.zpr.org"),
               ("bas", "bas.zpr.org")]
 
 def run(command, shell=True):
@@ -37,15 +38,16 @@ def makedirs(builddir):
 def generate_authority(builddir):
     print("\n\n\ngenerating ZPR RSA Certificate Authority\n\n\n")
     authority_dir = Path(builddir) / AUTHDIRNAME
-    run(f"openssl genrsa -aes256 -out {authority_dir}/auth-ca.key 4096")
-    run(f"openssl req -x509 -new -key {authority_dir}/auth-ca.key -sha256 -days 1826 -out {authority_dir}/auth-ca.crt")
+    run(f"openssl genrsa -out {authority_dir}/auth-ca.key 4096")
+    run(f"openssl req -x509 -new -key {authority_dir}/auth-ca.key -sha256 -days 1826 -out {authority_dir}/auth-ca.crt"
+        f" -subj '/CN=auth.zpr'")
 
 def generate_zpr_rsa(builddir):
     print("\n\n\ngenerating ZPR RSA key and cert\n\n\n")
     authority_dir = Path(builddir) / AUTHDIRNAME
     key_dir = Path(builddir) / KEYDIRNAME
     run(f"openssl genrsa -out {key_dir}/zpr-rsa-key.pem 2048")
-    run(f"openssl req -new -key {key_dir}/zpr-rsa-key.pem -out {key_dir}/zpr.csr")
+    run(f"openssl req -new -key {key_dir}/zpr-rsa-key.pem -out {key_dir}/zpr.csr -subj '/CN=root.zpr'")
 
     sign_ext = """
 authorityKeyIdentifier=keyid,issuer
@@ -84,12 +86,13 @@ def generate_bootstrap_keys(builddir, fname, cn):
     run(f"openssl genrsa -out {key_dir}/{priv_key} 2048")
     run(f"openssl rsa -pubout -in {key_dir}/{priv_key} -out {key_dir}/{pub_key}")
 
-def generate_rsa_tls_key_and_cert(builddir, fname):
+def generate_rsa_tls_key_and_cert(builddir, fname, cn):
     print(f"\n\n\ngenerating TLS RSA key and cert for {fname}\n\n")
     key_dir = Path(builddir) / KEYDIRNAME
     priv_key = f"{fname}-tls.key"
     cert_name = f"{fname}-tls.crt"
-    run(f"openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out {key_dir}/{cert_name} -keyout {key_dir}/{priv_key}")
+    run(f"openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out {key_dir}/{cert_name} -keyout {key_dir}/{priv_key}"
+        f" -subj '/CN={cn}'")
 
 
 def main():
@@ -117,7 +120,8 @@ def main():
     generate_authority(args.builddir)
     generate_zpr_rsa(args.builddir)
 
-    generate_rsa_tls_key_and_cert(args.builddir, "bas")
+    generate_rsa_tls_key_and_cert(args.builddir, "bas", "bas.zpr.org")
+    generate_rsa_tls_key_and_cert(args.builddir, "vs", "vs.zpr")
 
     for aname, cn in ADAPTERS:
         generate_noise_keys_and_certs(args.builddir, args.zprbuilddir, f"adapter-{aname}", cn)

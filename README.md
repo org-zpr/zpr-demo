@@ -9,7 +9,8 @@ The rest of this file is about running the demo.  If you need to build a new rel
 
 # Latest Demo Release
 
-The latest release will be here in `main` and in a branch named `demo-YYYYMMDD`.
+The latest working release will be here in a branch named `demo-YYYYMMDD`.  The `main`
+branch may or may not have a working config in it.
 
 The demo consists of a container image, some binaries and some configuration
 files.
@@ -49,7 +50,7 @@ Get the correct binaries from the github *releases* section.
 
 ### Get and Launch the Docker container.
 
-Then to start the container: `sudo make ZPR_IMAGE_VERSION=latest up`
+Then to start the container: `sudo make up`
 
 The docker image starts three containers:
 - Node

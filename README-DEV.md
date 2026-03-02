@@ -8,14 +8,19 @@ requires access to all the relevant ZPR repositories.
 
 The makefile will default to using todays date as the version number.
 
-For now you need to build stuff on a local ubuntu 24.04 linux machine in
-order to get the correct code.
+
+When you build a demo release it will use your host machine as the build
+environment. You can optionaally use our development environment container
+from the `zpr-dev-tools` repository.  To do so, make sure that the container
+is available locally and tagged `zpr/dev-env:latest`, then pass
+`USE_DOCKER=1` to all the make commands.
 
 You need to first tag all these repos with a tag like `demo-VERSION`:
 * `zpr-core`
 * `zpr-compiler`
 * `zpr-visaservice`
 * `zpr-bas`
+
 
 Also verify that the `POLICY` variable in the makefile is set to the correct
 ZPL file.
@@ -27,13 +32,17 @@ ZPL file.
 make TAG=demo-VERSION release
 ```
 
+Or if using docker:
+
+```bash
+make USE_DOCKER=1 TAG=demo-VERSION release
+```
+
+NOTE: You can use `TAG=HEAD` to build from `main`.
+
 Or you can run each make separately:
 * `make TAG=demo-VERSION zprbins`
-* `make creds` -- You will be prompted during creating of certificates.
-  * The first passpharse you enter is for the local certificate authority. You will need to enter this every time we create a certificate.
-  * Certificate 1 is for the CA itself.  Typical CN value is `auth.zpr`.
-  * Certificate 2 is for the ZPR keypair.  Typical CN value is `root.zpr`. No need for a challenge password or optional company name.
-  * Certificate 3 is for TLS connection to bas.  Use CN of `bas.zpr.org`.
+* `make creds`
 * `make configs`
 * `make policy`
 * `make artifacts`
@@ -46,8 +55,9 @@ In the `docker/` subdirectory, run:
 
     sudo make build-image
 
-This will tag the image with `root_VERSION`.  `VERSION` defaults to todays date. See `docker/Makefile` for
-how to override this.
+
+This will tag the image with `ghcr.io/org-zpr/zpr-demo/zprdemo`. You can
+set the tag to anything you want, see `docker/Makefile` for hints.
 
 Use a personal access token (classic) with the `write:packages` scope.  Login to ghcr:
 
@@ -60,9 +70,6 @@ Then tag your local image:
 And push:
 
     sudo docker push ghcr.io/org-zpr/zpr-demo/zprdemo:latest
-
-
-
 
 
 ## Test it

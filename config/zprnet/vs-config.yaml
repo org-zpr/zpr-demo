@@ -1,4 +1,0 @@
-adapter_cert: adapter-vs-noise.crt
-root_ca: auth-ca.crt
-vs_cert: zpr-rsa.crt
-vs_key: zpr-rsa-key.pem

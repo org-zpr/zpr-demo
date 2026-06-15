@@ -1,10 +1,10 @@
 # ZPR Demo
 
-This repository contains support files for the containerized ZPR Demo as well as
+This folder contains support files for the containerized ZPR Demo as well as
 configuration and scripts used to create new versions of the demo.
 
 The rest of this file is about running the demo.  If you need to build a new release see
-[README-DEV.md](https://github.com/org-zpr/zpr-demo/blob/main/README-DEV.md).
+[README-DEV.md](https://github.com/org-zpr/zpr-demo/blob/main/containerized-demo/README-DEV.md).
 
 
 # Latest Demo Release
@@ -17,7 +17,7 @@ files.
 
 - The container image can be downloaded from GHCR in the [org-zpr packages area](https://github.com/orgs/org-zpr/packages/container/package/zpr-demo%2Fzprdemo).
 - The release binaries are in the [releases area](https://github.com/org-zpr/zpr-demo/releases).
-- The configuration files are in the repo in [release/conf](https://github.com/org-zpr/zpr-demo/tree/main/release/conf).
+- The configuration files are in the repo in [release/conf](https://github.com/org-zpr/zpr-demo/tree/main/containerized-demo/release/conf).
 
 
 # How to run the demo

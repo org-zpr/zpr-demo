@@ -2,11 +2,10 @@ services:
   mosquitto:
     image: eclipse-mosquitto:2
     ports:
-      - "1883:1883"
+      - "8883:8883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
-      # Mount cert directory when OCI bridge is configured:
-      # - ./mosquitto/certs:/mosquitto/certs
+      - ./mosquitto/certs:/mosquitto/certs
 
   device-a:
     build:
@@ -14,8 +13,12 @@ services:
     command: python device_a.py
     environment:
       MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: "8883"
       MQTT_TOPIC: devices/device-a/telemetry
+      MQTT_CA_CERT: /certs/ca.crt
       PUBLISH_INTERVAL: "5"
+    volumes:
+      - ./mosquitto/certs/ca.crt:/certs/ca.crt:ro
     depends_on:
       - mosquitto
     restart: on-failure
@@ -26,8 +29,12 @@ services:
     command: python device_b.py
     environment:
       MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: "8883"
       MQTT_TOPIC: devices/device-b/telemetry
+      MQTT_CA_CERT: /certs/ca.crt
       PUBLISH_INTERVAL: "5"
+    volumes:
+      - ./mosquitto/certs/ca.crt:/certs/ca.crt:ro
     depends_on:
       - mosquitto
     restart: on-failure

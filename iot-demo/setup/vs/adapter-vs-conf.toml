@@ -1,0 +1,13 @@
+[global]
+# ca_file is optional for link establishment, but the VS adapter must present
+# a CA-signed certificate_file so the node can recognize it as the visa service.
+ca_file = "../authority/auth-ca.crt"
+certificate_file = "vs-noise.crt"   # CN must be "vs.zpr"
+private_key_file = "vs-noise.key"
+zpr_addr = [ "fd5a:5052::1" ]
+tun_if = "tun8"
+
+[adapter]
+node_addr = "10.137.4.48:5000"
+node_public_key_file = "../node/node-noise-pub.pem"
+bootstrap_key = "vs-private-key.pem"

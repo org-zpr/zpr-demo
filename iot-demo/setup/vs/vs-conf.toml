@@ -1,0 +1,4 @@
+[core]
+vs_addr = "fd5a:5052::1"
+admin_cert = "vs/admin-tls-cert.pem"
+admin_key = "vs/admin-tls-key.pem"

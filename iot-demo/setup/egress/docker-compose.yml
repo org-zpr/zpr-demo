@@ -1,0 +1,25 @@
+services:
+  egress:
+    build: .
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      TZ: UTC
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /home/othomas/zpr/core/target/debug/ph:/app/ph:ro
+      - /home/othomas/zpr/demo/iot-demo/setup:/certs:ro
+      - ./adapter-conf.toml:/app/adapter-conf.toml:ro
+    networks:
+      zpr-egress:
+        ipv4_address: 172.30.0.10
+
+networks:
+  zpr-egress:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

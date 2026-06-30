@@ -7,6 +7,11 @@ services:
       - /dev/net/tun
     environment:
       TZ: UTC
+      # OCI IoT bridge credentials — read from setup/egress/.env (gitignored),
+      # which is populated from `tofu output` via ./gen-env.sh.
+      OCI_DEVICE_HOST: ${OCI_DEVICE_HOST:-}
+      OCI_DEVICE_USERNAME: ${OCI_DEVICE_USERNAME:-}
+      OCI_DEVICE_PASSWORD: ${OCI_DEVICE_PASSWORD:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

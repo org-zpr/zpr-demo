@@ -1,0 +1,12 @@
+[global]
+# ca_file is needed for the node to verify adapter certificates and recognize
+# the visa-service adapter as special.  Without it, VS routing will not work.
+ca_file = "authority/auth-ca.crt"
+certificate_file = "node-noise.crt"
+private_key_file = "node-noise.key"
+self_addr = "0.0.0.0:5000"
+zpr_addr = [ "fd5a:5052:90de::1" ]
+tun_if = "tun9"
+
+[authentication]
+auth_private_key = "node-private-key.pem"

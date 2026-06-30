@@ -1,0 +1,4 @@
+[bootstrap] 
+"node.zpr.org" = "node-public-key.pem"
+"vs.zpr" = "vs-public-key.pem"
+

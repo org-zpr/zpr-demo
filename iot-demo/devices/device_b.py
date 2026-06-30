@@ -11,9 +11,11 @@ import time
 import paho.mqtt.client as mqtt
 
 BROKER_HOST = os.environ.get("MQTT_BROKER_HOST", "localhost")
-BROKER_PORT = int(os.environ.get("MQTT_BROKER_PORT", "1883"))
+BROKER_PORT = int(os.environ.get("MQTT_BROKER_PORT", "8883"))
 TOPIC = os.environ.get("MQTT_TOPIC", "devices/device-b/telemetry")
 PUBLISH_INTERVAL = float(os.environ.get("PUBLISH_INTERVAL", "5"))
+CA_CERT = os.environ.get("MQTT_CA_CERT")
+BIND_ADDRESS = os.environ.get("BIND_ADDRESS", "")
 
 DEVICE_ID = "device-b"
 SENSOR_TYPE = "co2_pressure"
@@ -28,7 +30,9 @@ def read_sensors():
 
 def main():
     client = mqtt.Client(client_id=DEVICE_ID)
-    client.connect(BROKER_HOST, BROKER_PORT)
+    if CA_CERT:
+        client.tls_set(ca_certs=CA_CERT)
+    client.connect(BROKER_HOST, BROKER_PORT, bind_address=BIND_ADDRESS)
     client.loop_start()
 
     print(f"[{DEVICE_ID}] Connected to {BROKER_HOST}:{BROKER_PORT}, publishing to {TOPIC}")

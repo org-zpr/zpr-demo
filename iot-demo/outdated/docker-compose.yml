@@ -1,12 +1,8 @@
 services:
   mosquitto:
     image: eclipse-mosquitto:2
-    ports:
-      - "1883:1883"
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
-      # Mount cert directory when OCI bridge is configured:
-      # - ./mosquitto/certs:/mosquitto/certs
 
   device-a:
     build:
@@ -14,6 +10,7 @@ services:
     command: python device_a.py
     environment:
       MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: "1883"
       MQTT_TOPIC: devices/device-a/telemetry
       PUBLISH_INTERVAL: "5"
     depends_on:
@@ -26,6 +23,7 @@ services:
     command: python device_b.py
     environment:
       MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: "1883"
       MQTT_TOPIC: devices/device-b/telemetry
       PUBLISH_INTERVAL: "5"
     depends_on:

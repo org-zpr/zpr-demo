@@ -1,0 +1,23 @@
+[nodes."node"]
+provider = [ ["endpoint.zpr.adapter.cn", "node.zpr.org"]]
+zpr_address = "fd5a:5052:90de::1"
+
+[trusted_services.default]
+cert_path = "../authority/auth-ca.crt"
+
+[visa_service]
+dock_node = "node"
+admin_attrs = [ [ "endpoint.zpr.adapter.cn", "admin.zpr.org" ] ]
+
+[bootstrap]
+"node.zpr.org" = "../node/node-public-key.pem"
+"vs.zpr" = "vs-public-key.pem"
+"ingress.zpr.org" = "../ingress/ingress-public-key.pem"
+"egress.zpr.org" = "../egress/egress-public-key.pem"
+
+[protocols.mqtt]
+l4protocol = "iana.TCP"
+port = 1883
+
+[services.OracleIoT]
+protocol = "mqtt"

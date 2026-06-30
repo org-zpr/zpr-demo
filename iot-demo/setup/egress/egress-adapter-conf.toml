@@ -1,0 +1,9 @@
+[global]
+ca_file = "authority/auth-ca.crt"
+certificate_file = "egress-noise.crt"
+private_key_file = "egress-noise.key"
+
+[adapter]
+node_addr = "10.137.4.48:5000"
+node_public_key_file = "node-noise-pub.pem"
+bootstrap_key = "egress-private-key.pem"

@@ -1,0 +1,9 @@
+[global]
+ca_file = "/certs/authority/auth-ca.crt"
+certificate_file = "/certs/egress/egress-noise.crt"
+private_key_file = "/certs/egress/egress-noise.key"
+
+[adapter]
+node_addr = "host.docker.internal:5000"
+node_public_key_file = "/certs/node/node-noise-pub.pem"
+bootstrap_key = "/certs/egress/egress-private-key.pem"

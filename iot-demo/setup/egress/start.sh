@@ -18,7 +18,12 @@ sleep 2
 # (username/password) auth instead of mTLS. Credentials come from env vars
 # (set via setup/egress/.env, populated from `tofu output`).
 cp /etc/mosquitto/conf.d/zpr.conf /tmp/zpr.conf
-if [ -n "${OCI_DEVICE_HOST:-}" ]; then
+# All-or-nothing: if ANY OCI var is set, require ALL three, so partial creds fail
+# loudly here instead of producing a broken bridge stanza that dies at connect time.
+if [ -n "${OCI_DEVICE_HOST:-}" ] || [ -n "${OCI_DEVICE_USERNAME:-}" ] || [ -n "${OCI_DEVICE_PASSWORD:-}" ]; then
+  : "${OCI_DEVICE_HOST:?missing OCI_DEVICE_HOST}"
+  : "${OCI_DEVICE_USERNAME:?missing OCI_DEVICE_USERNAME}"
+  : "${OCI_DEVICE_PASSWORD:?missing OCI_DEVICE_PASSWORD}"
   echo "Configuring OCI IoT bridge -> ${OCI_DEVICE_HOST}"
   cat >> /tmp/zpr.conf <<EOF
 
@@ -39,7 +44,7 @@ notifications false
 topic "" out 1 devices/device-a/telemetry iot/v1/telemetry
 EOF
 else
-  echo "OCI_DEVICE_HOST not set — starting Mosquitto without the OCI bridge."
+  echo "OCI bridge credentials not set — starting Mosquitto without the OCI bridge."
 fi
 
 # Start Mosquitto in foreground

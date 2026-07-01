@@ -1,6 +1,6 @@
 ############################
 # IoT data path on the EXISTING domain (ZPR-Demo-Domain).
-# model -> adapter -> cert-auth instance. device_b is blocked by ZPR before it
+# model -> adapter -> secret-auth instance. device_b is blocked by ZPR before it
 # reaches the egress mosquitto, so only device_a needs an instance.
 ############################
 

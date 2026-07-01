@@ -1,5 +1,5 @@
 ############################
-# Provider / tenancy
+# Provider
 ############################
 variable "region" {
   type        = string
@@ -7,14 +7,9 @@ variable "region" {
   default     = "us-ashburn-1"
 }
 
-variable "tenancy_ocid" {
-  type        = string
-  description = "Tenancy OCID. Used for the dynamic group (tenancy-level resource)."
-}
-
 variable "compartment_id" {
   type        = string
-  description = "Compartment where all demo resources (vault, CA, cert, IoT) live. ZPR-IoT-Demo."
+  description = "Compartment where all demo resources (vault, secret, IoT) live. ZPR-IoT-Demo."
 }
 
 ############################

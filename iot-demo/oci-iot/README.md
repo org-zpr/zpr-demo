@@ -17,6 +17,8 @@ Data path: **digital twin model → adapter → secret-auth instance** on the ex
 The existing domain + domain group are *referenced by OCID*, never managed here.
 State is local (`terraform.tfstate`, gitignored).
 
+> **Note — state contains the device password.** `terraform.tfstate` stores the generated vault secret in plaintext. It is gitignored, so it never enters the repo. Keep it on local machine only. To have a shared deployment, we would need to migrate to an encrypted remote backend (e.g. OCI Object Storage with a Customer Secret Key).
+
 ## Prerequisites
 
 - OpenTofu / Terraform ≥ 1.6

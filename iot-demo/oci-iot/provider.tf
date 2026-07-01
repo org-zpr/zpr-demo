@@ -9,6 +9,7 @@ terraform {
       source = "hashicorp/random"
     }
   }
+
 }
 
 # Auth comes from ~/.oci/config (profile DEFAULT) — same creds the OCI CLI uses.

@@ -53,10 +53,10 @@ variable "external_key" {
 }
 
 variable "defined_tags" {
-  type = map(any)
-  default = { "Oracle-Tags.CreatedOn" = "$${oci.datetime}",
-    "Oracle-Tags.CreatedBy" = "$${iam.principal.name}"
-  }
+  # Default to none: OCI auto-applies Oracle-Tags on create anyway, and callers
+  # may lack rights to manage that namespace. Pass a map explicitly only if you can.
+  type    = map(any)
+  default = {}
 }
 
 variable "freeform_tags" {

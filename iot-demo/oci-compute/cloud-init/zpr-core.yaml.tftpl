@@ -1,0 +1,318 @@
+#cloud-config
+# zpr-core first-boot. Rendered by templatefile() with:
+#   par_base_url        : PAR URL prefix objects are curled from (ends in .../o/)
+#   zpr_dir             : on-instance base dir (e.g. /opt/zpr)
+#   node_conf           : rendered node-conf.toml
+#   vs_adapter_conf     : rendered adapter-vs-conf.toml
+#   vs_conf             : rendered vs-conf.toml
+#   egress_conf         : rendered egress-adapter-conf.toml
+#   oci_device_host     : OCI IoT MQTT endpoint (empty -> bridge omitted)
+#   oci_device_username : "device-a"
+#   oci_device_password : vault secret (baked into user_data; sensitive)
+#   zpr_substrate_port  : UDP port the node listens on (default 5000)
+#
+# Runs EVERYTHING NATIVE (no Docker). Start order via After=/Requires= PLUS
+# ExecStartPre readiness gates (After= alone only waits for process exec, not
+# readiness — that gap caused the AA-registration race):
+#   zpr-tuns -> zpr-node -> zpr-vs-adapter (waits: node 5000/udp listening)
+#   -> zpr-vs (waits: vs-adapter ACTIVE, then flushall) ; zpr-egress after node
+#   -> mosquitto after egress
+#
+# NOTE: valkey + mosquitto come from EPEL. Package/service names assumed
+# (valkey.service, mosquitto.service) — verify on first boot if they don't start.
+
+# Make dnf skip any repo whose metadata is momentarily unreachable instead of
+# aborting the whole transaction. Runs early (before runcmd's dnf install). Without
+# this, a transient outage of an UNNEEDED repo (e.g. ol9_ksplice) fails the install.
+bootcmd:
+  - dnf config-manager --setopt='*.skip_if_unavailable=1' --save || true
+
+write_files:
+  # --- wait-for-network gate: cloud-init runcmd can fire before OCI finishes bringing
+  #     up the instance's network/DNS, causing dnf/curl "Could not resolve host". Block
+  #     until the artifact host resolves (up to ~5 min) before any download. ---
+  - path: /var/lib/cloud/wait-network.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      host=$(echo "${par_base_url}" | sed -E 's#https?://([^/]+)/.*#\1#')
+      for i in $(seq 1 60); do
+        getent hosts "$host" >/dev/null 2>&1 && exit 0
+        sleep 5
+      done
+      echo "network/DNS not ready after ~5min (cannot resolve $host)" >&2
+      exit 1
+
+  # --- static TUN setup (tun9 node, tun8 VS adapter) — ported from reset-tuns.sh ---
+  - path: ${zpr_dir}/setup-tuns.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      for tun in tun8 tun9; do
+        ip link show "$tun" &>/dev/null && ip link delete "$tun" || true
+      done
+      # tun9 — node
+      ip tuntap add name tun9 mode tun multi_queue
+      ip link set tun9 mtu 1400
+      ip addr add fd5a:5052:90de::1/32 dev tun9
+      ip link set tun9 up
+      # tun8 — VS adapter
+      ip tuntap add name tun8 mode tun multi_queue
+      ip link set tun8 mtu 1400
+      ip addr add fd5a:5052::1/32 dev tun8
+      ip link set tun8 up
+
+  # --- readiness gates (fix the AA-registration startup race): the node's auth
+  # authority is registered ONCE, early; if the visa service starts before the node
+  # is listening / the VS adapter is ACTIVE, that registration fails permanently and
+  # every adapter is then rejected ("no valid auth services available"). These gates
+  # reproduce the proven manual order: node listening -> VS adapter ACTIVE -> visa svc. ---
+  - path: ${zpr_dir}/wait-node-ready.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      # Block until the node's substrate UDP port is listening.
+      for i in $(seq 1 60); do
+        ss -uln | grep -q '0.0.0.0:${zpr_substrate_port}' && exit 0
+        sleep 1
+      done
+      echo "timeout waiting for node ${zpr_substrate_port}/udp" >&2
+      exit 1
+  - path: ${zpr_dir}/wait-vs-adapter-ready.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      # Block until the VS adapter has been granted its ZPR address (ACTIVE).
+      for i in $(seq 1 60); do
+        journalctl -u zpr-vs-adapter --no-pager 2>/dev/null | grep -q 'becoming ACTIVE' && exit 0
+        sleep 1
+      done
+      echo "timeout waiting for zpr-vs-adapter to become ACTIVE" >&2
+      exit 1
+  - path: ${zpr_dir}/wait-vs-registered.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      # Block until the node has registered the visa service (full auth chain up), so
+      # the egress adapter's Noise handshake AND address grant both succeed on the first
+      # try. Without this, the egress can start before the node is ready, its handshake
+      # times out, and ph gets stuck retrying (only a process restart recovers).
+      for i in $(seq 1 60); do
+        journalctl -u zpr-node --no-pager 2>/dev/null | grep -q 'registered VSS' && exit 0
+        sleep 1
+      done
+      echo "timeout waiting for node to register the visa service" >&2
+      exit 1
+
+  # --- rendered configs ---
+  - path: ${zpr_dir}/node/node-conf.toml
+    permissions: "0644"
+    content: |
+      ${indent(6, node_conf)}
+  - path: ${zpr_dir}/vs/adapter-vs-conf.toml
+    permissions: "0644"
+    content: |
+      ${indent(6, vs_adapter_conf)}
+  - path: ${zpr_dir}/vs/vs-conf.toml
+    permissions: "0644"
+    content: |
+      ${indent(6, vs_conf)}
+  - path: ${zpr_dir}/egress/egress-adapter-conf.toml
+    permissions: "0644"
+    content: |
+      ${indent(6, egress_conf)}
+
+  # --- mosquitto: listener + (optional) OCI IoT bridge, ported from egress/start.sh ---
+  - path: /etc/mosquitto/conf.d/zpr.conf
+    permissions: "0644"
+    content: |
+      listener 1883
+      allow_anonymous true
+%{ if oci_device_host != "" ~}
+      # --- OCI IoT Platform bridge (device_a, basic auth over TLS) ---
+      connection oci_iot_device_a
+      address ${oci_device_host}:8883
+      bridge_cafile /etc/pki/tls/certs/ca-bundle.crt
+      bridge_protocol_version mqttv311
+      remote_clientid ${oci_device_username}
+      remote_username ${oci_device_username}
+      remote_password ${oci_device_password}
+      try_private false
+      cleansession true
+      keepalive_interval 60
+      restart_timeout 30
+      start_type automatic
+      notifications false
+      topic "" out 0 devices/device-a/telemetry iot/v1/telemetry
+%{ endif ~}
+
+  # --- systemd units ---
+  - path: /etc/systemd/system/zpr-tuns.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR static TUN setup (tun8, tun9)
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=${zpr_dir}/setup-tuns.sh
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/zpr-node.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR node
+      After=zpr-tuns.service
+      Requires=zpr-tuns.service
+
+      [Service]
+      Type=simple
+      Environment=TZ=UTC
+      RuntimeDirectory=zpr
+      RuntimeDirectoryPreserve=yes
+      ExecStart=/usr/local/bin/ph node -c ${zpr_dir}/node/node-conf.toml
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/zpr-vs-adapter.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR VS adapter
+      After=zpr-node.service
+      Requires=zpr-node.service
+
+      [Service]
+      Type=simple
+      Environment=TZ=UTC
+      RuntimeDirectory=zpr
+      RuntimeDirectoryPreserve=yes
+      ExecStartPre=${zpr_dir}/wait-node-ready.sh
+      ExecStart=/usr/local/bin/ph adapter -c ${zpr_dir}/vs/adapter-vs-conf.toml
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/zpr-vs.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR visa service
+      After=valkey.service zpr-vs-adapter.service
+      Requires=valkey.service
+
+      [Service]
+      Type=simple
+      Environment=TZ=UTC
+      ExecStartPre=${zpr_dir}/wait-vs-adapter-ready.sh
+      ExecStartPre=/usr/bin/valkey-cli flushall
+      ExecStart=/usr/local/bin/vs -c ${zpr_dir}/vs/vs-conf.toml ${zpr_dir}/iot-demo.bin2
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/zpr-egress.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR egress adapter
+      After=zpr-node.service zpr-vs.service
+      Requires=zpr-node.service
+
+      [Service]
+      Type=simple
+      Environment=TZ=UTC
+      RuntimeDirectory=zpr
+      RuntimeDirectoryPreserve=yes
+      ExecStartPre=${zpr_dir}/wait-vs-registered.sh
+      ExecStart=/usr/local/bin/ph adapter -c ${zpr_dir}/egress/egress-adapter-conf.toml
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # mosquitto should come up after the egress adapter (which delivers ZPR traffic
+  # to localhost:1883). Drop-in adds the ordering to the packaged mosquitto.service.
+  - path: /etc/systemd/system/mosquitto.service.d/10-zpr.conf
+    permissions: "0644"
+    content: |
+      [Unit]
+      After=zpr-egress.service
+
+runcmd:
+  # --- wait for network/DNS before any dnf/curl (see wait-network.sh) ---
+  - /var/lib/cloud/wait-network.sh
+
+  # --- packages: valkey + mosquitto live in EPEL, which OL9 ships DISABLED.
+  # Enable it first, then install (client tools ship inside the mosquitto package;
+  # there is no separate mosquitto-clients on EPEL/RHEL; ca-certificates is preinstalled). ---
+  - dnf config-manager --set-enabled ol9_developer_EPEL
+  - dnf install -y valkey mosquitto
+
+  # --- make mosquitto load /etc/mosquitto/conf.d/zpr.conf. OL9/EPEL's mosquitto.conf
+  # does NOT include conf.d by default (Debian's does — why it worked on the laptop).
+  # Without this, mosquitto runs "local only mode" (localhost) AND ignores the OCI
+  # bridge stanza. Idempotent so re-runs don't duplicate the line. ---
+  - grep -qxF 'include_dir /etc/mosquitto/conf.d' /etc/mosquitto/mosquitto.conf || echo 'include_dir /etc/mosquitto/conf.d' >> /etc/mosquitto/mosquitto.conf
+
+  # --- host firewall (layer 2). Open 5000/udp (node substrate) and 1883/tcp (MQTT:
+  # device telemetry arrives on the egress adapter's tun and hits mosquitto). Both
+  # arrive on non-loopback interfaces (default "public" zone), so firewalld drops them
+  # unless opened. The OCI security list still blocks these from outside the subnet. ---
+  - firewall-cmd --add-port=${zpr_substrate_port}/udp --permanent
+  - firewall-cmd --add-port=1883/tcp --permanent
+  - firewall-cmd --reload
+
+  # --- lay out dirs ---
+  - mkdir -p ${zpr_dir}/authority ${zpr_dir}/node ${zpr_dir}/vs ${zpr_dir}/egress
+
+  # --- binaries ---
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}bin/ph" -o /usr/local/bin/ph && chmod +x /usr/local/bin/ph
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}bin/vs" -o /usr/local/bin/vs && chmod +x /usr/local/bin/vs
+
+  # --- policy + shared ---
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/iot-demo.bin2" -o ${zpr_dir}/iot-demo.bin2
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}shared/auth-ca.crt" -o ${zpr_dir}/authority/auth-ca.crt
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}shared/node-noise-pub.pem" -o ${zpr_dir}/node/node-noise-pub.pem
+
+  # --- node keys ---
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/node/node-noise.crt" -o ${zpr_dir}/node/node-noise.crt
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/node/node-noise.key" -o ${zpr_dir}/node/node-noise.key
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/node/node-private-key.pem" -o ${zpr_dir}/node/node-private-key.pem
+
+  # --- vs keys ---
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/vs-noise.crt" -o ${zpr_dir}/vs/vs-noise.crt
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/vs-noise.key" -o ${zpr_dir}/vs/vs-noise.key
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/vs-private-key.pem" -o ${zpr_dir}/vs/vs-private-key.pem
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/admin-tls-cert.pem" -o ${zpr_dir}/vs/admin-tls-cert.pem
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/admin-tls-key.pem" -o ${zpr_dir}/vs/admin-tls-key.pem
+
+  # --- egress keys ---
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/egress/egress-noise.crt" -o ${zpr_dir}/egress/egress-noise.crt
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/egress/egress-noise.key" -o ${zpr_dir}/egress/egress-noise.key
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/egress/egress-private-key.pem" -o ${zpr_dir}/egress/egress-private-key.pem
+
+  # --- bring it all up in dependency order ---
+  - systemctl daemon-reload
+  - systemctl enable --now valkey.service
+  - systemctl enable --now zpr-tuns.service
+  - systemctl enable --now zpr-node.service
+  - systemctl enable --now zpr-vs-adapter.service
+  - systemctl enable --now zpr-vs.service
+  - systemctl enable --now zpr-egress.service
+  - systemctl enable --now mosquitto.service

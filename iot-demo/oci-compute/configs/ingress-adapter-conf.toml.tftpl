@@ -1,0 +1,12 @@
+# Rendered by templatefile() -> written to disk by device-a cloud-init.
+# Vars: zpr_dir, node_addr. node_addr = zpr-core's PRIVATE IP:5000 (across the subnet).
+# No zpr_addr/tun_if: DYNAMIC ZPR address + TUN from the node (needs CAP_NET_ADMIN).
+[global]
+ca_file = "${zpr_dir}/authority/auth-ca.crt"
+certificate_file = "${zpr_dir}/ingress/ingress-noise.crt"
+private_key_file = "${zpr_dir}/ingress/ingress-noise.key"
+
+[adapter]
+node_addr = "${node_addr}"
+node_public_key_file = "${zpr_dir}/node/node-noise-pub.pem"
+bootstrap_key = "${zpr_dir}/ingress/ingress-private-key.pem"

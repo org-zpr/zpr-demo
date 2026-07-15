@@ -1,0 +1,17 @@
+bin/
+
+# OpenTofu / Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Committed on purpose: .terraform.lock.hcl, and terraform.tfvars (holds only
+# OCIDs — identifiers, not secrets; real auth lives in ~/.oci/config).

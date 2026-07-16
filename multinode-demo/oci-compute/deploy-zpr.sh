@@ -68,8 +68,9 @@ deploy_host() {  # $1=pubip $2=conf-path $3=label
 # Session name = mode (one ph per host). Re-run kills the old session first.
 # Attach to watch output: ssh -t ubuntu@<host> tmux attach -t <mode>
 start_ph() {  # $1=pubip $2=mode(node|adapter) $3=conf-basename $4=label
+  # tee to ~/zpr/$mode.log so output survives the tmux session dying (^C, crash).
   ssh_h "$1" "tmux kill-session -t $2 2>/dev/null || true; \
-    tmux new-session -d -s $2 -c ~/zpr './ph $2 -c ~/zpr/$3'; \
+    tmux new-session -d -s $2 -c ~/zpr './ph $2 -c ~/zpr/$3 2>&1 | tee ~/zpr/$2.log'; \
     sleep 1; tmux has-session -t $2 2>/dev/null \
       && echo '[$4] ph $2 running in tmux session \"$2\"' \
       || { echo 'ERROR: ph $2 exited immediately on $4' >&2; exit 1; }"
@@ -98,3 +99,6 @@ echo
 echo "Done. Attach to a ph session to watch its output (Ctrl-b d to detach):"
 echo "  ssh -i $KEY -t ubuntu@$NODE_PUB tmux attach -t node"
 echo "  ssh -i $KEY -t ubuntu@$WEB_PUB  tmux attach -t adapter"
+echo "Logs also tee'd to ~/zpr/<mode>.log on each host (survive the tmux session):"
+echo "  ssh -i $KEY ubuntu@$NODE_PUB 'tail -f ~/zpr/node.log'"
+echo "  ssh -i $KEY ubuntu@$WEB_PUB  'tail -f ~/zpr/adapter.log'"

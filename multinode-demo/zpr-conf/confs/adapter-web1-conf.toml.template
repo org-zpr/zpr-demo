@@ -1,0 +1,13 @@
+[global]
+ca_file = "include/auth-ca.crt"
+zpr_addr = [ "fd5a:5052:8888::9" ] # visa service well known addr
+tun_if = "tun9"
+
+[adapter]
+name = "premweb.demo"
+# This is private addr of node1 in OCI (port 5000).
+# See `tofu output`.
+node_addr="@@NODE1_ADDR@@:5000"
+node_public_key_file = "include/node1-noise-pub.pem"
+bootstrap_key = "include/web1-private-key.pem"
+

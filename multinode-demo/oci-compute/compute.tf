@@ -1,9 +1,8 @@
 ############################
-# Compute — three Ubuntu 24.04 instances in the one public subnet.
+# Compute — two Ubuntu 24.04 instances in the one public subnet.
 #   webserver : nginx + landing page (web/index.html)
 #   node      : ZPR substrate host (5000/tcp+udp open) — bare this pass
-#   vs        : valkey-server
-# One cloud-init template for all three, parameterized by role. No ZPR
+# One cloud-init template for both, parameterized by role. No ZPR
 # binaries yet — that's a later pass.
 ############################
 
@@ -13,7 +12,6 @@ locals {
   hosts = {
     webserver = { tun_addr = "fd5a:5052:8888::8", packages = ["tmux", "nginx"] }
     node      = { tun_addr = "fd5a:5052:90de::10", packages = ["tmux"] }
-    vs        = { tun_addr = "fd5a:5052::1", packages = ["tmux", "valkey-server"] }
   }
 }
 

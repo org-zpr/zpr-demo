@@ -1,0 +1,10 @@
+[global]
+ca_file = "include/auth-ca.crt"
+
+[adapter]
+name = "user.demo"
+# node_addr is the exposed address for local docker node (node1).
+# port 5000.
+node_addr = "@@NODE1_EXT_ADDR@@:5000"
+node_public_key_file = "include/node1-noise-pub.pem"
+bootstrap_key = "include/client-private-key.pem"

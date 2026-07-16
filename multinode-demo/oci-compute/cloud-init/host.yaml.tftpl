@@ -37,9 +37,10 @@ write_files:
 %{ endif ~}
 
 runcmd:
-  # Retry apt until DNS/mirrors are reachable, then install packages.
+  # Retry apt until DNS/mirrors are reachable — both update AND install fetch can
+  # lose the boot-time DNS race, so each gets its own retry loop.
   - for i in $(seq 1 10); do apt-get update && break || sleep 10; done
-  - DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent ${join(" ", packages)}
+  - for i in $(seq 1 10); do DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent ${join(" ", packages)} && break || sleep 10; done
   # Open host firewall for the ports the security list already allows.
   # (OCI Ubuntu image rejects inbound except SSH; insert at top of INPUT.)
   # Port 80 is intra-VCN only on the webserver — external HTTP is ZPR-managed.

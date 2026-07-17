@@ -45,5 +45,5 @@ provider = [[ "endpoint.zpr.adapter.cn", "ociweb.demo" ], ["zpr.addr", "fd5a:505
 [services.PremWeb]
 protocol = "http"
 port = "80"
-provider = [[ "endpoint.zpr.adapter.cn", "premweb.demo" ]]
+provider = [[ "endpoint.zpr.adapter.cn", "premweb.demo" ], ["zpr.addr", "fd5a:5052:8888::9" ]]
 

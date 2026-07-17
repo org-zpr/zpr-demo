@@ -57,7 +57,7 @@ tofu apply -replace='oci_core_instance.host["webserver"]'
 Once the infra is up, `oci-compute/deploy-zpr.sh` puts the `ph` binary + configs
 on both hosts, injects the node's private IP into the web adapter config, and
 starts each `ph` in a detached `tmux` session in the right order. See
-[`tf-configure-run-zpr.md`](tf-configure-run-zpr.md) for the design.
+[`tf-configure-run-zpr.md`](work/tf-configure-run-zpr.md) for the design.
 
 **Deploy:**
 
@@ -111,7 +111,7 @@ The local "on-prem" side runs three containers — `node1`, `vs` (visa service),
 (static IPs on bridge `zpr-local` `172.30.0.0/24`, `node1` publishing `5000`
 tcp+udp, tun9 caps); `local-compute/deploy-docker.sh` does the dynamic parts
 (render configs, generate `vs_keys.toml`, compile the policy, launch the ZPR
-processes in order). See [`docker-configure-run-zpr.md`](docker-configure-run-zpr.md).
+processes in order). See [`work/docker-configure-run-zpr.md`](work/docker-configure-run-zpr.md).
 
 **Prerequisites:** `../oci-compute` applied (the policy needs node0's public IP),
 and the image built once:

@@ -103,3 +103,88 @@ out in `Helloing` until the **visa service** is up — that runs in the local
 docker env (not the OCI hosts), so this is expected for the OCI-only setup.
 
 
+
+## How to deploy & run ZPR (local docker env)
+
+The local "on-prem" side runs three containers — `node1`, `vs` (visa service),
+`web1` — from one image (`zpr-multinode`). `docker-compose.yml` owns the infra
+(static IPs on bridge `zpr-local` `172.30.0.0/24`, `node1` publishing `5000`
+tcp+udp, tun9 caps); `local-compute/deploy-docker.sh` does the dynamic parts
+(render configs, generate `vs_keys.toml`, compile the policy, launch the ZPR
+processes in order). See [`docker-configure-run-zpr.md`](docker-configure-run-zpr.md).
+
+**Prerequisites:** `../oci-compute` applied (the policy needs node0's public IP),
+and the image built once:
+
+```bash
+docker build -t zpr-multinode .
+```
+
+**Deploy:**
+
+```bash
+./local-compute/deploy-docker.sh                    # same-host operator
+NODE1_EXT_ADDR=<host-ip> ./local-compute/deploy-docker.sh   # cross-host operator
+```
+
+Re-runnable: it re-renders configs, recompiles the policy, and restarts each
+process (old tmux session killed first). No image rebuild needed for a re-deploy
+(configs come in as volume mounts).
+
+**Watch the ZPR processes** (logs tee'd to a host-mounted volume — no `docker
+exec` needed):
+
+```bash
+tail -f local-compute/logs/*.log
+```
+
+Sessions: `node1` (node), `vs` + `vs-adapter` (vs container), `web1-adapter`
+(web1). Attach live (Ctrl-b d to detach):
+
+```bash
+docker exec -it vs tmux attach -t vs
+```
+
+**Expected state:** node1's `ph` listens on `0.0.0.0:5000`; the vs and web1
+adapters connect, authenticate, and their `dock link` becomes `ACTIVE` (past
+`Helloing`). `cert failed signature verification` / `unverified name` warnings
+are benign (default trusted service, cert checking disabled in this demo policy).
+
+**Operator client:** `deploy-docker.sh` renders the host-side client adapter and
+generates its key at `local-compute/client/` (`adapter-client-conf.toml` +
+`client.key`) — run `sudo bin/ph adapter -c adapter-client-conf.toml` from there
+to reach the ZPR web services.
+
+**Administer the visa service (`vs-admin` GUI):** the vsapi access key that
+`vs-admin` needs is the same `client.key` generated each deploy at
+`local-compute/client/client.key` (host side). `vs-admin` is baked into the image,
+so launch it from a terminal attached to the `vs` container, passing the key via
+`VS_API_KEY` (no need to copy the file in). The admin API listens on the vs ZPR
+address `[fd5a:5052::1]:8182` and presents a self-signed TLS cert, so `--ca-cert`
+points at that same cert:
+
+```bash
+docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
+  /app/bin/vs-admin \
+    --svc-url "https://[fd5a:5052::1]:8182" \
+    --ca-cert /conf/include/admin-tls-cert.pem \
+    gui
+```
+
+Drop `gui` for one-shot commands (e.g. `services`, `policies`, `actors`, `visas`).
+
+**Updating the policy** (edited `zpr-conf/admin/multinode-demo.zpl` or
+`multinode-demo.zplc.template`): just re-run `./local-compute/deploy-docker.sh`.
+It recompiles the policy to `multinode-demo.bin2` and restarts `vs` with
+`--clear-state`, which loads the new policy. No image rebuild needed. (The
+containers, tun9, and valkey stay up; only the ZPR processes are relaunched.)
+
+**Updating a binary** (new `ph`/`vs`/etc. in `bin/`): binaries are **baked into
+the image**, not mounted, so rebuild the image first, then re-deploy:
+
+```bash
+docker build -t zpr-multinode .        # picks up the new bin/
+./local-compute/deploy-docker.sh       # `up -d` recreates containers on the new image, relaunches ZPR
+```
+
+**Teardown:** `docker compose down`.

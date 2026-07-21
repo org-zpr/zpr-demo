@@ -23,6 +23,8 @@ port matrix, and the decisions behind this layout.
 | `outputs.tf` | public/private IPs + ready-to-paste SSH commands |
 | `lib.sh` | shared helpers (SSH, address discovery, `start_device`) — sourced, not run |
 | `post-init.sh` | one-time zpr-core setup after `tofu apply` (egress addr + return-path routing) |
+| `restart-core.sh` | sequentially restart the zpr-core ZPR chain (after a binary swap / clean bounce) |
+| `vs-admin.sh` | run `vs-admin` locally against the visa service admin API over an SSH tunnel |
 | `start-device-a.sh` | start the ZPR-allowed device (telemetry → OCI) |
 | `start-device-b.sh` | start the ZPR-blocked device (denied by the visa service) |
 
@@ -82,9 +84,8 @@ Then set up zpr-core (discovers the dynamic egress address, installs the egress
 return-path routing) and start each device:
 
 ```bash
+CORE=$(tofu output -raw zpr_core_public_ip)
 ./post-init.sh          # one-time zpr-core setup — run before the device scripts
-./start-device-a.sh     # allowed device — telemetry should flow to OCI
-./start-device-b.sh     # blocked device — denied by the visa service
 ```
 
 The two device scripts are independent — you can start/stop either on its own (e.g.
@@ -110,8 +111,9 @@ authority didn't register — see TOPOLOGY.md gotcha #3.)
 This proves device_a → ingress → node → egress → mosquitto works:
 
 ```bash
+CORE=$(tofu output -raw zpr_core_public_ip)
 ssh -i ~/.ssh/zpr-demo opc@$CORE \
-  "timeout 15 mosquitto_sub -h localhost -p 1883 -t 'devices/#' -v"
+  "mosquitto_sub -h localhost -p 1883 -t 'devices/#' -v"
 ```
 
 Expect a `devices/device-a/telemetry {…}` line every ~5s. **Only device-a** should
@@ -123,7 +125,16 @@ This proves the mosquitto→OCI bridge works (the final hop):
 
 ```bash
 INST=$(tofu -chdir=../oci-iot output -raw device_a_instance_ocid)
-oci iot digital-twin-instance get-content --digital-twin-instance-id "$INST"
+watch -n 1 "oci iot digital-twin-instance get-content --digital-twin-instance-id $INST --query data"
+```
+
+```bash
+CORE=$(tofu output -raw zpr_core_public_ip)
+./start-device-a.sh     # allowed device — telemetry should flow to OCI
+```
+
+```bash
+./start-device-b.sh     # blocked device — denied by the visa service
 ```
 
 The returned `content` shows `temperature_c` / `humidity_pct` matching what device_a
@@ -197,6 +208,43 @@ For the device's own view of being blocked, its publisher times out on connect:
 ssh -i ~/.ssh/zpr-demo opc@$DB 'sudo journalctl -u zpr-device -n 20'
 # -> socket.timeout: timed out  (the SYN is dropped at the node; no visa)
 ```
+
+## Visa service admin (vs-admin)
+
+The visa service exposes an admin HTTPS API on `https://[fd5a:5052::1]:8182` (bound on
+tun8). It needs an API key, and the endpoint is only reachable on zpr-core itself.
+
+**One-time: create an API key on zpr-core** (writes `/vs_keys.toml`, which the vs reads;
+prints the key). `vsapikey` is in the OL9 build — copy it over if not already there:
+
+```bash
+CORE=$(tofu output -raw zpr_core_public_ip)
+scp -i ~/.ssh/zpr-demo ~/zpr/oci-build/release/vsapikey opc@$CORE:/tmp/
+ssh -i ~/.ssh/zpr-demo opc@$CORE 'sudo install -m0755 /tmp/vsapikey /usr/local/bin/
+  KEY=$(sudo /usr/local/bin/vsapikey create readwrite admin /vs_keys.toml --init --desc admin)
+  sudo systemctl kill -s SIGUSR2 zpr-vs   # reload keys, no restart
+  echo "$KEY"'
+# paste the printed key into oci-compute/.vs-admin.key (gitignored)
+```
+
+`vsapikey create <read|readwrite> <owner> [keyfile] [--init]`; the vs reloads its key
+file on **SIGUSR2** (no restart, so no AA-race risk).
+
+**Then use `vs-admin` locally over an SSH tunnel** — `./vs-admin.sh <args>` opens a
+forward to the admin endpoint, runs your laptop's `vs-admin`, and closes the tunnel.
+Because the forwarded connection originates on zpr-core it counts as same-host (no extra
+ZPR policy needed):
+
+```bash
+./vs-admin.sh actors        # list actors (node, egress, vs, devices)
+./vs-admin.sh services      # list services (incl. OracleIoT)
+./vs-admin.sh policies --curr
+./vs-admin.sh stats
+```
+
+Build a current `vs-admin` on your laptop first (`cd ~/zpr/visaservice && cargo build
+--release -p vs-admin`) so its subcommands match the running vs. Paths are overridable
+via `VSADMIN` / `VS_CA` / `VS_KEYFILE` env vars.
 
 ## Unverified assumptions (check on first apply / boot)
 

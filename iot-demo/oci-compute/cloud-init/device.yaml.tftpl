@@ -6,6 +6,9 @@
 #   adapter_name   : ingress | ingress2  (also the cert-file stem and on-disk subdir)
 #   device_script  : device_a.py | device_b.py
 #   adapter_config : rendered ingress adapter .toml (node_addr already filled in)
+#   device_restart : systemd Restart= for the publisher — "on-failure" (device-a, so it
+#                    self-heals if the connection drops) or "no" (device-b, so the blocked
+#                    device fails once and stays down instead of looping forever)
 #
 # Stages the ph binary + this role's certs + device script and installs the adapter +
 # device systemd units, but does NOT start them at boot. The ingress adapter is started
@@ -71,7 +74,7 @@ write_files:
       # post-init.sh writes this with MQTT_BROKER_HOST/BIND_ADDRESS after discovery:
       EnvironmentFile=${zpr_dir}/devices/device.env
       ExecStart=/usr/bin/python3 ${zpr_dir}/devices/${device_script}
-      Restart=on-failure
+      Restart=${device_restart}
       RestartSec=5
 
       [Install]

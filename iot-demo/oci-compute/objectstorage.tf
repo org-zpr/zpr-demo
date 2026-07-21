@@ -38,8 +38,9 @@ locals {
   # object_name (key in the bucket) => local source file
   artifacts = {
     # --- shared binaries ---
-    "bin/ph" = var.ph_binary_path
-    "bin/vs" = var.vs_binary_path
+    "bin/ph"       = var.ph_binary_path
+    "bin/vs"       = var.vs_binary_path
+    "bin/vsapikey" = var.vsapikey_binary_path
 
     # --- shared small files (multiple roles reference these) ---
     "shared/auth-ca.crt"        = "${local.setup}/authority/auth-ca.crt"

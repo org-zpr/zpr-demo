@@ -97,6 +97,12 @@ variable "vs_binary_path" {
   default     = "/home/othomas/zpr/oci-build/release/vs"
 }
 
+variable "vsapikey_binary_path" {
+  type        = string
+  description = "Path to the vsapikey binary (generates the admin API key at boot). OL9-built."
+  default     = "/home/othomas/zpr/oci-build/release/vsapikey"
+}
+
 variable "par_expiry" {
   type        = string
   description = "Absolute expiry (RFC3339) for the artifact pre-authenticated request. Bump as needed."

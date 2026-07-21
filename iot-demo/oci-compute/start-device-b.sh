@@ -8,10 +8,10 @@ source "$(dirname "$0")/lib.sh"
 
 start_device ssh_devB zpr-ingress2 device-b
 
-echo
-echo "Verify it is blocked BY THE VISA SERVICE (not just silent):"
-echo "  watch denials:  ssh -i $KEY opc@$ZPR_CORE_IP 'sudo journalctl -u zpr-vs -f'"
-echo "    -> 'visa request from ... denied (no match): no matching policy'"
-echo "  device view:    ssh -i $KEY opc@$DEVICE_B_IP 'sudo journalctl -u zpr-device -n 20'"
-echo "    -> socket.timeout: timed out"
-echo "  stop:           ssh -i $KEY opc@$DEVICE_B_IP 'sudo systemctl stop zpr-device'"
+# echo
+# echo "Verify it is blocked BY THE VISA SERVICE (not just silent):"
+# echo "  watch denials:  ssh -i $KEY opc@$ZPR_CORE_IP 'sudo journalctl -u zpr-vs -f'"
+# echo "    -> 'visa request from ... denied (no match): no matching policy'"
+# echo "  device view:    ssh -i $KEY opc@$DEVICE_B_IP 'sudo journalctl -u zpr-device -n 20'"
+# echo "    -> socket.timeout: timed out"
+# echo "  stop:           ssh -i $KEY opc@$DEVICE_B_IP 'sudo systemctl stop zpr-device'"

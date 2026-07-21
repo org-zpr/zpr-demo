@@ -284,6 +284,7 @@ runcmd:
   # --- binaries ---
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}bin/ph" -o /usr/local/bin/ph && chmod +x /usr/local/bin/ph
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}bin/vs" -o /usr/local/bin/vs && chmod +x /usr/local/bin/vs
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}bin/vsapikey" -o /usr/local/bin/vsapikey && chmod +x /usr/local/bin/vsapikey
 
   # --- policy + shared ---
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/iot-demo.bin2" -o ${zpr_dir}/iot-demo.bin2
@@ -308,6 +309,12 @@ runcmd:
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/egress/egress-private-key.pem" -o ${zpr_dir}/egress/egress-private-key.pem
 
   # --- bring it all up in dependency order ---
+  # --- generate the visa service admin API key BEFORE the services start, so the vs
+  #     loads it on boot. Writes /vs_keys.toml (what the vs reads; its CWD is /) and
+  #     saves the full key string to ${zpr_dir}/vs/admin-api.key for the operator to
+  #     fetch (vs-admin.sh pulls it). Non-fatal if it fails (admin API just has no key). ---
+  - /usr/local/bin/vsapikey create readwrite admin /vs_keys.toml --init --desc admin > ${zpr_dir}/vs/admin-api.key 2>/dev/null && chmod 600 ${zpr_dir}/vs/admin-api.key || echo "vsapikey keygen failed — admin API will have no key"
+
   - systemctl daemon-reload
   - systemctl enable --now valkey.service
   - systemctl enable --now zpr-tuns.service

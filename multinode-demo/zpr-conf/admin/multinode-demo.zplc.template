@@ -1,14 +1,14 @@
 # minimal config so that we can test parsing the RFC zpl
 
 [nodes.n0]
-provider = [["endpoint.zpr.adapter.cn", "node0.demo"]]
+provider = [["device.zpr.adapter.cn", "node0.demo"]]
 zpr_address = "fd5a:5052:90de::10"
 
 [nodes.n0.substrate_addrs]
 i0 = "@@NODE0_PUBLIC_ADDR@@:5000"
 
 [nodes.n1]
-provider = [["endpoint.zpr.adapter.cn", "node1.demo"]]
+provider = [["device.zpr.adapter.cn", "node1.demo"]]
 zpr_address = "fd5a:5052:90de::11"
 
 [nodes.n1.substrate_addrs]
@@ -40,10 +40,10 @@ port = 80
 [services.OciWeb]
 protocol = "http"
 port = "80"
-provider = [[ "endpoint.zpr.adapter.cn", "ociweb.demo" ], ["zpr.addr", "fd5a:5052:8888::8"]]
+provider = [[ "device.zpr.adapter.cn", "ociweb.demo" ], ["zpr.addr", "fd5a:5052:8888::8"]]
 
 [services.PremWeb]
 protocol = "http"
 port = "80"
-provider = [[ "endpoint.zpr.adapter.cn", "premweb.demo" ], ["zpr.addr", "fd5a:5052:8888::9" ]]
+provider = [[ "device.zpr.adapter.cn", "premweb.demo" ], ["zpr.addr", "fd5a:5052:8888::9" ]]
 

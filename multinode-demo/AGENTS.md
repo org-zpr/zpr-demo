@@ -12,6 +12,8 @@ Sub plans are in `work/` directory - in order of completion:
 3. `work/tf-configure-run-zpr.md` - DONE
 4. `work/docker-configure-run-zpr.md` (§5–8, local docker env) - DONE
 5. `work/docker-configure-run-zpr-steps.md` - DONE
+6. `work/endpoint-to-device-plan.md` - DONE
+
 
 
 ## Tools

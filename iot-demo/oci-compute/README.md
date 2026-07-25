@@ -108,7 +108,7 @@ authority didn't register — see TOPOLOGY.md gotcha #3.)
 
 ### 3. Verify device_a telemetry reaches the broker (the ZPR-allowed path)
 
-This proves device_a → ingress → node → egress → mosquitto works:
+This proves device_a → device-a adapter → node → egress → mosquitto works:
 
 ```bash
 CORE=$(tofu output -raw zpr_core_public_ip)
@@ -148,7 +148,7 @@ Symmetric to the block below: device_a's flow is authorized by the visa service,
 logs the grant as a `created visa` line. A grant is **cached** (long-lived), so it's
 logged once and device_a then runs quietly — unlike device_b's denials, which repeat
 every second because a denied flow is never cached. So to *watch* a grant happen you
-force a fresh device_a flow (restarting its ingress adapter gives it a new ZPR address,
+force a fresh device_a flow (restarting its adapter gives it a new ZPR address,
 which triggers a new visa request):
 
 ```bash
@@ -159,7 +159,7 @@ DA=$(tofu output -raw device_a_public_ip)
 ssh -i ~/.ssh/zpr-demo opc@$CORE 'sudo journalctl -u zpr-vs -f'
 
 # terminal 2 — force a fresh device_a flow:
-ssh -i ~/.ssh/zpr-demo opc@$DA 'sudo systemctl restart zpr-ingress'   # new address
+ssh -i ~/.ssh/zpr-demo opc@$DA 'sudo systemctl restart zpr-device-a'   # new address
 ./start-device-a.sh                                                    # re-wire + publish
 ```
 
@@ -169,7 +169,7 @@ In terminal 1 you'll see the grant appear:
 vs::visa_mgr: created visa 1004
 ```
 
-That is the visa service authorizing device_a's `ingress.zpr.org → egress.zpr.org` flow
+That is the visa service authorizing device_a's `device-a.zpr.org → egress.zpr.org` flow
 (the policy's single `allow` rule). Contrast with device_b, which never gets one.
 
 ### 6. Verify device_b is genuinely blocked *by the visa service*
@@ -188,8 +188,8 @@ vreq: visa request from fd5a:5052:90de::1 denied (no match): no matching policy
 ```
 
 Those come from the node (`fd5a:5052:90de::1`) on device_b's behalf: device_b connects
-through the **ingress2** adapter (cert CN `ingress2.zpr.org`), and the policy
-(`iot-demo.zpl`) only allows `ingress.zpr.org → egress.zpr.org`, so ingress2 matches no
+through the **device-b** adapter (cert CN `device-b.zpr.org`), and the policy
+(`iot-demo.zpl`) only allows `device-a.zpr.org → egress.zpr.org`, so device-b matches no
 rule and is denied — where device_a got a `created visa` (step 5), device_b gets
 `denied (no match)`.
 

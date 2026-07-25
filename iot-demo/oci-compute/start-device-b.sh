@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Start device-b (the ZPR-BLOCKED device). It connects through the ingress2 adapter
-# (cert CN ingress2.zpr.org), which the policy does not allow, so the visa service
+# Start device-b (the ZPR-BLOCKED device). It connects through the device-b adapter
+# (cert CN device-b.zpr.org), which the policy does not allow, so the visa service
 # denies its flow and its publisher just times out. This is the policy demo.
 #
 # Prerequisite: run ./post-init.sh once after `tofu apply`. Rerun after a stop/start.
 source "$(dirname "$0")/lib.sh"
 
-start_device ssh_devB zpr-ingress2 device-b
+start_device ssh_devB zpr-device-b device-b
 
 # echo
 # echo "Verify it is blocked BY THE VISA SERVICE (not just silent):"

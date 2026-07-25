@@ -31,25 +31,25 @@ locals {
   }))
 
   device_a_user_data = base64encode(templatefile("${path.module}/cloud-init/device.yaml.tftpl", {
-    par_base_url  = local.par_base_url
-    zpr_dir       = var.zpr_dir
+    par_base_url   = local.par_base_url
+    zpr_dir        = var.zpr_dir
     role_prefix    = "device-a"
-    adapter_name   = "ingress"
+    adapter_name   = "device-a"
     device_script  = "device_a.py"
     device_restart = "on-failure" # allowed device: self-heal if the connection drops
-    adapter_config = templatefile("${path.module}/configs/ingress-adapter-conf.toml.tftpl", {
+    adapter_config = templatefile("${path.module}/configs/device-a-adapter-conf.toml.tftpl", {
       zpr_dir = var.zpr_dir, node_addr = local.node_addr_device
     })
   }))
 
   device_b_user_data = base64encode(templatefile("${path.module}/cloud-init/device.yaml.tftpl", {
-    par_base_url  = local.par_base_url
-    zpr_dir       = var.zpr_dir
+    par_base_url   = local.par_base_url
+    zpr_dir        = var.zpr_dir
     role_prefix    = "device-b"
-    adapter_name   = "ingress2"
+    adapter_name   = "device-b"
     device_script  = "device_b.py"
     device_restart = "no" # blocked device: fail once and stay down (no restart loop)
-    adapter_config = templatefile("${path.module}/configs/ingress2-adapter-conf.toml.tftpl", {
+    adapter_config = templatefile("${path.module}/configs/device-b-adapter-conf.toml.tftpl", {
       zpr_dir = var.zpr_dir, node_addr = local.node_addr_device
     })
   }))

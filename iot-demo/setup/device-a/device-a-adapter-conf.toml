@@ -1,9 +1,9 @@
 [global]
 ca_file = "../authority/auth-ca.crt"
-certificate_file = "ingress2-noise.crt"
-private_key_file = "ingress2-noise.key"
+certificate_file = "device-a-noise.crt"
+private_key_file = "device-a-noise.key"
 
 [adapter]
 node_addr = "192.168.4.237:5000"
 node_public_key_file = "../node/node-noise-pub.pem"
-bootstrap_key = "ingress2-private-key.pem"
+bootstrap_key = "device-a-private-key.pem"

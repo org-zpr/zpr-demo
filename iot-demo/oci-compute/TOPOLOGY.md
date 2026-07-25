@@ -16,7 +16,7 @@ Docker" below).
    │ device-a     │       │  valkey ── visa service (vs) ──┐               │
    │              │  UDP  │       (TCP+valkey, localhost)   │               │
    │ device_a.py  │ 5000  │  node (ph) ─── VS adapter (ph) ─┘  tun8/tun9    │
-   │ ingress (ph) ├──────►│    ▲  self_addr 0.0.0.0:5000                    │
+   │ device-a(ph) ├──────►│    ▲  self_addr 0.0.0.0:5000                    │
    │  tunX        │       │    │                                            │
    └──────────────┘       │    └── egress adapter (ph, dials 127.0.0.1:5000)│
                           │        mosquitto (1883, localhost)             │
@@ -24,7 +24,7 @@ Docker" below).
    │ Instance 2:  │  UDP  │                                    │            │
    │ device-b     │ 5000  │                                    │            │
    │ device_b.py  ├──────►│                                    │            │
-   │ ingress2(ph) │       └────────────────────────────────────┼───────────┘
+   │ device-b(ph) │       └────────────────────────────────────┼───────────┘
    │  tunY        │  (BLOCKED by ZPR policy at the node)        │ TLS 8883
    └──────────────┘                                             ▼
                                                      OCI IoT Platform
@@ -35,8 +35,8 @@ Docker" below).
 
 | Instance | Runs | Privileges | Talks to |
 |----------|------|-----------|----------|
-| **device-a** | `device_a.py`, ingress adapter (`ph`) | needs TUN (NET_ADMIN / sudo) | zpr-core:5000/udp |
-| **device-b** | `device_b.py`, ingress2 adapter (`ph`) | needs TUN | zpr-core:5000/udp (dropped by policy) |
+| **device-a** | `device_a.py`, device-a adapter (`ph`) | needs TUN (NET_ADMIN / sudo) | zpr-core:5000/udp |
+| **device-b** | `device_b.py`, device-b adapter (`ph`) | needs TUN | zpr-core:5000/udp (dropped by policy) |
 | **zpr-core** | valkey, node (`ph`), VS adapter (`ph`), visa service (`vs`), egress adapter (`ph`), mosquitto + OCI bridge — all native | needs TUN | OCI IoT :8883 outbound |
 
 Everything in **one public subnet** (e.g. `10.0.0.0/24`). ZPR is the access-control
@@ -107,7 +107,7 @@ for smaller uploads once built).
 
 ## Address discovery — the hand-off (option 1: post-init script)
 
-ZPR grants **dynamic** ZPR addresses to the ingress, ingress2, and egress adapters at
+ZPR grants **dynamic** ZPR addresses to the device-a, device-b, and egress adapters at
 runtime (`Link N granted ZPR addresses [IpAddress(V6: …)]`). The node and VS addresses
 are static in config; these three are not knowable until the adapters connect.
 
@@ -117,12 +117,12 @@ After `tofu apply` brings all three instances up and running, run `post-init.sh`
    destination devices publish to).
 1b. On **zpr-core**, install source-based policy routing so egress replies exit the
    egress tun (see "Deployment gotchas" — the overlapping-route fix).
-2. SSH to **device-a**, read `journalctl -u zpr-ingress` → **ingress-addr**. Add the
-   route (`ip -6 route replace <egress-addr> dev <ingress-tun>`), write `device.env`,
-   and start the `zpr-device` unit (`MQTT_BROKER_HOST=<egress-addr>`,
-   `BIND_ADDRESS=<ingress-addr>`).
-3. SSH to **device-b**, same with **ingress2-addr** (it is blocked at the node —
-   that's the demo).
+2. `start-device-a.sh`: SSH to **device-a**, read `journalctl -u zpr-device-a` →
+   **device-a-addr**. Add the route (`ip -6 route replace <egress-addr> dev <tun>`),
+   write `device.env`, and start the `zpr-device` publisher unit
+   (`MQTT_BROKER_HOST=<egress-addr>`, `BIND_ADDRESS=<device-a-addr>`).
+3. `start-device-b.sh`: same via `zpr-device-b` (it is blocked at the node — that's
+   the demo).
 
 Rerun after any stop/start — restarted adapters get NEW dynamic addresses.
 

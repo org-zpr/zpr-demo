@@ -6,7 +6,7 @@
 # return-path routing on zpr-core). Rerun this after a stop/start (addresses change).
 source "$(dirname "$0")/lib.sh"
 
-start_device ssh_devA zpr-ingress device-a
+start_device ssh_devA zpr-device-a device-a
 
 # echo
 # echo "Verify:"

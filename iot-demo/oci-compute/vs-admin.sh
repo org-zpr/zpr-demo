@@ -14,13 +14,13 @@
 # (created via vsapikey on zpr-core). Override paths with env vars if needed.
 source "$(dirname "$0")/lib.sh"
 
-VSADMIN="${VSADMIN:-/home/othomas/zpr/visaservice/target/release/vs-admin}"
+VSADMIN="${VSADMIN:-/home/othomas/zpr/visaservice/target/debug/vs-admin}"
 VS_CA="${VS_CA:-/home/othomas/zpr/demo/iot-demo/setup/authority/auth-ca.crt}"
 KEYFILE_DEFAULT="$(dirname "$0")/.vs-admin.key"
 KEYFILE="${VS_KEYFILE:-$KEYFILE_DEFAULT}"
 LPORT="${VS_LPORT:-8182}"
 
-[ -x "$VSADMIN" ] || { echo "vs-admin not found/executable: $VSADMIN (build it: cd ~/zpr/visaservice && cargo build --release -p vs-admin)" >&2; exit 1; }
+[ -x "$VSADMIN" ] || { echo "vs-admin not found/executable: $VSADMIN (build it: cd ~/zpr/visaservice && cargo build -p vs-admin)" >&2; exit 1; }
 
 # Keep the auto-managed key in sync with the running core. cloud-init regenerates the
 # key on every fresh instance (into $ZPR_DIR/vs/admin-api.key), so a cached local copy

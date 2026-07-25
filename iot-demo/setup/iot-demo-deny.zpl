@@ -1,2 +1,2 @@
-define IoTDevice as an endpoint with zpr.adapter.cn:'ingress.zpr.org'
-define OracleIoT as a service with endpoint.zpr.adapter.cn:'egress.zpr.org'
+define DeviceA as an device with zpr.adapter.cn:'device-a.zpr.org'.
+define OracleIoT as a service with device.zpr.adapter.cn:'egress.zpr.org'.

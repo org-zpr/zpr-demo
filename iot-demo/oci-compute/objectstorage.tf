@@ -14,8 +14,8 @@
 #   bin/       ph, vs                          (shared big binaries)
 #   shared/    auth-ca.crt, node-noise-pub.pem (small, needed by multiple roles)
 #   core/      policy + node/vs/egress keys    (zpr-core only)
-#   device-a/  ingress keys                     (device-a only)
-#   device-b/  ingress2 keys                    (device-b only)
+#   device-a/  device-a keys                    (device-a only)
+#   device-b/  device-b keys                    (device-b only)
 #
 # The CA *private* key (authority/auth-ca.key) is deliberately NOT uploaded — it's
 # the root of trust and never leaves the operator laptop.
@@ -60,16 +60,16 @@ locals {
     "core/egress/egress-noise.key"       = "${local.setup}/egress/egress-noise.key"
     "core/egress/egress-private-key.pem" = "${local.setup}/egress/egress-private-key.pem"
 
-    # --- device-a: ingress cert+key material + device script ---
-    "device-a/ingress-noise.crt"       = "${local.setup}/ingress/ingress-noise.crt"
-    "device-a/ingress-noise.key"       = "${local.setup}/ingress/ingress-noise.key"
-    "device-a/ingress-private-key.pem" = "${local.setup}/ingress/ingress-private-key.pem"
-    "device-a/device_a.py"             = "${path.module}/../devices/device_a.py"
+    # --- device-a: cert+key material + device script ---
+    "device-a/device-a-noise.crt"       = "${local.setup}/device-a/device-a-noise.crt"
+    "device-a/device-a-noise.key"       = "${local.setup}/device-a/device-a-noise.key"
+    "device-a/device-a-private-key.pem" = "${local.setup}/device-a/device-a-private-key.pem"
+    "device-a/device_a.py"              = "${path.module}/../devices/device_a.py"
 
-    # --- device-b: ingress2 cert+key material + device script ---
-    "device-b/ingress2-noise.crt"       = "${local.setup}/ingress2/ingress2-noise.crt"
-    "device-b/ingress2-noise.key"       = "${local.setup}/ingress2/ingress2-noise.key"
-    "device-b/ingress2-private-key.pem" = "${local.setup}/ingress2/ingress2-private-key.pem"
+    # --- device-b: cert+key material + device script ---
+    "device-b/device-b-noise.crt"       = "${local.setup}/device-b/device-b-noise.crt"
+    "device-b/device-b-noise.key"       = "${local.setup}/device-b/device-b-noise.key"
+    "device-b/device-b-private-key.pem" = "${local.setup}/device-b/device-b-private-key.pem"
     "device-b/device_b.py"              = "${path.module}/../devices/device_b.py"
   }
 }

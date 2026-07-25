@@ -3,7 +3,8 @@
 #   par_base_url   : PAR URL prefix objects are curled from (ends in .../o/)
 #   zpr_dir        : on-instance base dir (e.g. /opt/zpr)
 #   role_prefix    : bucket prefix for this role's objects (device-a | device-b)
-#   adapter_name   : ingress | ingress2  (also the cert-file stem and on-disk subdir)
+#   adapter_name   : device-a | device-b  (also the cert-file stem, on-disk subdir, and
+#                    systemd unit suffix zpr-<adapter_name>)
 #   device_script  : device_a.py | device_b.py
 #   adapter_config : rendered ingress adapter .toml (node_addr already filled in)
 #   device_restart : systemd Restart= for the publisher — "on-failure" (device-a, so it

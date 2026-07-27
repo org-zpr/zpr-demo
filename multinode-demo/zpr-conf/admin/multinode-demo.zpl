@@ -2,8 +2,8 @@
 define OciWeb as a service.
 define PremWeb as a service.
 
-allow user to access OciWeb.
-allow user to access PremWeb.
+allow oci_user user to access OciWeb.
+allow prem_user user to access PremWeb.
 
 
 

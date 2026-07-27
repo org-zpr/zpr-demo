@@ -54,6 +54,7 @@ cp "$CONF_TMPL/node1-conf.toml"        "$CONF_ROOT/node1/node1-conf.toml"    # n
 render "$CONF_TMPL/adapter-vs-conf.toml.template"   "$CONF_ROOT/vs/adapter-vs-conf.toml"
 render "$CONF_TMPL/adapter-web1-conf.toml.template" "$CONF_ROOT/web1/adapter-web1-conf.toml"
 cp "$SCRIPT_DIR/vs.toml" "$CONF_ROOT/vs/vs.toml"
+cp "$ADMIN/attrfile.json" "$CONF_ROOT/vs/attrfile.json"   # policy attributes, read by vs
 
 # host-side operator client (stays on host, next to client.key)
 render "$CONF_TMPL/adapter-client-conf.toml.template" "$CLIENT_DIR/adapter-client-conf.toml"

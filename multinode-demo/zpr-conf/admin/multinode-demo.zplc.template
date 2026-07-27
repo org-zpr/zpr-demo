@@ -22,6 +22,11 @@ peers = [{node="n0"}, {node="n1"}]
 
 [trusted_services.default]
 
+[trusted_services.attrfile]
+api = "file"
+returns_attributes = ["prem_user -> #user.prem_user", "oci_user -> #user.oci_user"]
+expiration_seconds = 3600
+
 
 [bootstrap]
 "node0.demo" = "../include/node0-public-key.pem"

@@ -1,0 +1,7 @@
+{
+  "user.demo": {
+    "prem_user": ["yes"],
+    "oci_user": ["yes"]
+  }
+}
+

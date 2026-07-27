@@ -173,6 +173,26 @@ docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
 
 Drop `gui` for one-shot commands (e.g. `services`, `policies`, `actors`, `visas`).
 
+**Editing the attribute file (`attrfile.json`) live:** `zpr-conf/admin/attrfile.json`
+holds the JSON attributes referenced by the policy and read by the visa service.
+`deploy-docker.sh` copies it to `local-compute/conf/vs/attrfile.json`, which is
+bind-mounted into the `vs` container at `/conf/attrfile.json` (same dir as
+`vs_keys.toml`). To change attributes mid-demo, edit the mounted copy on the host
+and tell the visa service to reload it:
+
+```bash
+$EDITOR local-compute/conf/vs/attrfile.json          # live copy, no restart needed
+
+docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
+  /app/bin/vs-admin \
+    --svc-url "https://[fd5a:5052::1]:8182" \
+    --ca-cert /conf/include/admin-tls-cert.pem \
+    services -i attrfile --flush
+```
+
+`local-compute/conf/` is regenerated on every deploy, so copy the edit back into
+`zpr-conf/admin/attrfile.json` to keep it.
+
 **Updating the policy** (edited `zpr-conf/admin/multinode-demo.zpl` or
 `multinode-demo.zplc.template`): just re-run `./local-compute/deploy-docker.sh`.
 It recompiles the policy to `multinode-demo.bin2` and restarts `vs` with

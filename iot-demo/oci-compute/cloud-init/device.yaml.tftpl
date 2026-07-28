@@ -80,7 +80,9 @@ write_files:
       Type=simple
       # post-init.sh writes this with MQTT_BROKER_HOST/BIND_ADDRESS after discovery:
       EnvironmentFile=${zpr_dir}/devices/device.env
-      ExecStart=/usr/bin/python3 ${zpr_dir}/devices/${device_script}
+      # -u: unbuffered stdout, so journalctl -f shows each publish as it happens
+      # instead of flushing ~50 lines at a time.
+      ExecStart=/usr/bin/python3 -u ${zpr_dir}/devices/${device_script}
       Restart=${device_restart}
       RestartSec=5
 

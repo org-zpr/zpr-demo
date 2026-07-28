@@ -186,8 +186,17 @@ repo baseline (device-b `nope`) and confirm:
 In a largish terminal, open the vs-admin gui so you can see what's going on.
 
 ```bash
-./oci-compute/vs-admin.sh gui
+VS_REMOTE=1 ./oci-compute/vs-admin.sh gui
 ```
+
+`VS_REMOTE=1` runs vs-admin **on zpr-core** over `ssh -t` instead of locally over an
+SSH tunnel. Prefer it for the gui: vs-admin opens a fresh HTTPS connection per request
+and its refresh loop makes one call per actor and per service every 2s, so over the
+tunnel a single refresh costs ~3.5s of TLS handshakes — longer than the refresh
+interval, which starves the keyboard poll and makes the gui feel frozen. On-instance
+the same refresh takes ~0.7s and only the screen repaint crosses the wire. Requires
+`./oci-compute/build-in-ol9.sh` to have run (it builds the OL9 vs-admin already).
+Plain `./oci-compute/vs-admin.sh <cmd>` is still fine for one-shot commands.
 
 In another terminal keep an eye on the broker:
 

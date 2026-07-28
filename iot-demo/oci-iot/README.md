@@ -46,7 +46,10 @@ tofu output device_a_username          # "device-a"
 tofu output iot_device_host            # broker host
 ```
 
-Add a bridge `connection` to the egress mosquitto:
+Add a bridge `connection` to the egress mosquitto. On the OCI deployment this stanza is
+generated for you by `oci-compute/cloud-init/zpr-core.yaml.tftpl` (which is the source of
+truth — it differs in detail, e.g. `bridge_cafile` and QoS 0); the snippet below is for
+the single-laptop egress container:
 
 ```conf
 connection oci_iot_device_a

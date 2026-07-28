@@ -5,8 +5,13 @@ Oracle IoT Platform:
 
 ```
 device_a → ingress adapter (ZPR) → node → egress adapter (ZPR) → mosquitto → [bridge] → OCI IoT
-device_b → ingress2 adapter (ZPR) → node → BLOCKED by policy
+device_b → ingress2 adapter (ZPR) → node → DENIED (no visa)
 ```
+
+This is the **single-laptop** variant, kept for local development. The demo as presented
+runs on OCI — see the [top-level README](../README.md) for that, including the attribute
+flip that grants and revokes access live. The policy and attribute file described here
+are the same ones the OCI deployment uses.
 
 The MQTT broker (mosquitto) runs in the egress container. Devices connect to the egress
 adapter's ZPR address — from the device's perspective this is just an IPv6 address.
@@ -167,7 +172,14 @@ MQTT_BROKER_HOST=<egress-addr> MQTT_BROKER_PORT=1883 BIND_ADDRESS=<ingress2-addr
 ```
 
 ✅ **Checkpoint E (the policy demo):** device_b should **not** get through — nothing for
-`devices/device-b/...` in Terminal 7, and nothing new in OCI. ZPR's policy blocks ingress2.
+`devices/device-b/...` in Terminal 7, and nothing new in OCI. Terminal 3 logs
+`denied (no match): no matching policy`, and device_b exits on `socket.timeout`.
+
+The block is **not** aimed at ingress2. `iot-demo.zpl` names no devices — its one rule
+allows `VerifiedIoTDevices`, defined as *a device with `OCIApproved:true`*. `attrfile.json`
+gives device-a `"true"` and device-b `"nope"`, and that single value is the whole
+difference. Edit `attrfile.json` and restart the vs (Terminal 3) to swap which device
+gets through.
 
 ---
 
@@ -186,5 +198,6 @@ MQTT_BROKER_HOST=<egress-addr> MQTT_BROKER_PORT=1883 BIND_ADDRESS=<ingress2-addr
   OCI-hosted deployment is stable.
 - device_a's **timestamp is microsecond-precision + `Z`** (required by the OCI adapter) —
   already handled in `devices/device_a.py`.
-- Only **device_a** has an OCI digital twin instance + bridge rule; device_b is both
-  blocked by ZPR and has no OCI path.
+- Only **device_a** has an OCI digital twin instance + bridge rule. So even if you
+  approve device_b via `attrfile.json`, its telemetry stops at the broker — it appears in
+  Terminal 7 but never in the digital twin.

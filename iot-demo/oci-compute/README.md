@@ -5,6 +5,11 @@ visa service, adapters, mosquitto + OCI bridge, and both devices) instead of the
 9-terminal single-laptop setup. See [TOPOLOGY.md](TOPOLOGY.md) for the diagram,
 port matrix, and the decisions behind this layout.
 
+This file is the deployment and verification reference. For *how to present the demo* —
+the attribute flip that grants and revokes access live — see
+[General Idea of How To Run The Demo](../README.md#general-idea-of-how-to-run-the-demo)
+in the top-level README.
+
 > **Status: working end-to-end on OCI.** Verified 2026-07-06 — clean `tofu apply` →
 > all services up on first boot → `post-init.sh` → device_a telemetry reaches the OCI
 > digital twin; device_b blocked by ZPR policy. See TOPOLOGY.md "Deployment gotchas"
@@ -123,8 +128,10 @@ ssh -i ~/.ssh/zpr-demo opc@$CORE \
   "mosquitto_sub -h localhost -p 1883 -t 'devices/#' -v"
 ```
 
-Expect a `devices/device-a/telemetry {…}` line every ~5s. **Only device-a** should
-appear here — device-b never reaches the broker.
+Expect a `devices/device-a/telemetry {…}` line every ~5s. With the attributes as shipped
+(`setup/attrfile.json`), **only device-a** appears here. If device-b shows up too, a
+previous run left it approved on the instance — `./attribute.sh push` restores the
+baseline.
 
 ### 4. Verify the data reaches the OCI IoT Platform
 
@@ -153,10 +160,9 @@ zpr-iot-demo-device-a → Content**.
 
 Symmetric to the block below: device_a's flow is authorized by the visa service, which
 logs the grant as a `created visa` line. A grant is **cached** (long-lived), so it's
-logged once and device_a then runs quietly — unlike device_b's denials, which repeat
-every second because a denied flow is never cached. So to *watch* a grant happen you
-force a fresh device_a flow (restarting its adapter gives it a new ZPR address,
-which triggers a new visa request):
+logged once and device_a then runs quietly. So to *watch* a grant happen you force a
+fresh device_a flow (restarting its adapter gives it a new ZPR address, which triggers
+a new visa request):
 
 ```bash
 CORE=$(tofu output -raw zpr_core_public_ip)
@@ -176,8 +182,9 @@ In terminal 1 you'll see the grant appear:
 vs::visa_mgr: created visa 1004
 ```
 
-That is the visa service authorizing device_a's `device-a.zpr.org → egress.zpr.org` flow
-(the policy's single `allow` rule). Contrast with device_b, which never gets one.
+That is the visa service authorizing device_a's flow under the policy's single `allow`
+rule — `allow VerifiedIoTDevices to access OracleIoT`, which device-a matches because
+`attrfile.json` gives it `OCIApproved:true`. Contrast with device_b, which never gets one.
 
 ### 6. Verify device_b is genuinely blocked *by the visa service*
 
@@ -188,25 +195,29 @@ On zpr-core, follow the visa service log while device_b keeps trying:
 ssh -i ~/.ssh/zpr-demo opc@$CORE 'sudo journalctl -u zpr-vs -f'
 ```
 
-You'll see a denial roughly every second:
+You'll see a denial once a second for about five seconds:
 
 ```
 vreq: visa request from fd5a:5052:90de::1 denied (no match): no matching policy
 ```
 
-Those come from the node (`fd5a:5052:90de::1`) on device_b's behalf: device_b connects
-through the **device-b** adapter (cert CN `device-b.zpr.org`), and the policy
-(`iot-demo.zpl`) only allows `device-a.zpr.org → egress.zpr.org`, so device-b matches no
-rule and is denied — where device_a got a `created visa` (step 5), device_b gets
-`denied (no match)`.
+Those come from the node (`fd5a:5052:90de::1`) on device_b's behalf. `iot-demo.zpl`
+names no devices at all — its one rule allows `VerifiedIoTDevices`, defined as *a device
+with `OCIApproved:true`*. device-b's entry in `setup/attrfile.json` is `"nope"`, so it
+matches no rule and is denied, where device_a (`"true"`) got a `created visa` in step 5.
+Flip that attribute and device-b is admitted with no policy change — that's the demo
+narrative in the [top-level README](../README.md#general-idea-of-how-to-run-the-demo).
 
-**Prove the denials are device_b, not noise** — stop device_b's publisher and watch the
-denials stop, then start it and watch them resume:
+The burst lasts five seconds because that's device_b's socket timeout: the publisher
+retries once a second, then exits. It has `Restart=no` (compute.tf — the blocked device
+fails once and stays down instead of spinning), so nothing retries afterwards.
+
+**Prove the denials are device_b, not noise** — relaunch its publisher and watch a fresh
+burst appear in step with it:
 
 ```bash
 DB=$(tofu output -raw device_b_public_ip)
-ssh -i ~/.ssh/zpr-demo opc@$DB 'sudo systemctl stop zpr-device'   # denials stop
-ssh -i ~/.ssh/zpr-demo opc@$DB 'sudo systemctl start zpr-device'  # denials resume
+ssh -i ~/.ssh/zpr-demo opc@$DB 'sudo systemctl start zpr-device'   # new 5s burst of denials
 ```
 
 For the device's own view of being blocked, its publisher times out on connect:

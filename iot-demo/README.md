@@ -160,66 +160,7 @@ Then verify with `./oci-compute/preflight.sh`, and drive policy live with
 `./oci-compute/attribute.sh` and `./oci-compute/vs-admin.sh`. Full walkthrough and
 expected output: [oci-compute/README.md](oci-compute/README.md).
 
-## Common first-run failures
 
-- **`GLIBC_2.38 not found` on an instance**
-
-  The binary was built outside the OL9 container. Run `build-in-ol9.sh`.
-
-- **Build fails fetching `zpr-common`**
-
-  The container has no network or no git access to GitHub.
-
-- **`cargo build --locked` fails**
-
-  `Cargo.lock` is stale in a checkout. Update and commit it there.
-
-- **`vs` rejects the policy, or `zplc` errors on a classname**
-
-  The `.bin2` was compiled by a mismatched `zplc`. Recompile it as described above.
-
-- **Tofu: `No value for required variable "ph_binary_path"`**
-
-  `build-in-ol9.sh` has not run, so `binaries.auto.tfvars` does not exist.
-
-- **`vs-admin` returns 401**
-
-  The cached `.vs-admin.key` went stale after a destroy/reapply. `vs-admin.sh`
-  re-fetches it, so check that cloud-init key generation ran.
-
-- **Compose: `ZPR_CORE_SRC — run ./gen-env.sh`**
-
-  `setup/egress/.env` is missing or predates this change.
-
-## Where things live
-
-- **[oci-compute/](oci-compute/README.md)**
-
-  The OCI deployment (three instances) and operator scripts. **Start here.**
-
-- **[oci-compute/TOPOLOGY.md](oci-compute/TOPOLOGY.md)**
-
-  Diagram, port matrix, and deployment gotchas.
-
-- **[setup/](setup/README.md)**
-
-  ZPL policy, keys, configs, and the single-laptop nine-terminal runbook.
-
-- **`devices/`**
-
-  The two Python MQTT device simulators.
-
-- **`oci-iot/`**
-
-  OpenTofu for the Oracle IoT Platform side (digital twins and vault).
-
-- **[portability.md](portability.md)**
-
-  The plan behind the `sources.env` scheme.
-
-- **`outdated/`**
-
-  Superseded and unmaintained material.
 
 
 ## General Idea of How To Run The Demo
@@ -287,3 +228,72 @@ Turn device-b off again — any value other than `true` fails the policy:
 The same knob works in reverse on the *allowed* device, which is the more striking
 version: `./oci-compute/attribute.sh set device-a.zpr.org OCIApproved false` revalidates
 its live visa and cuts the running stream off mid-flight, with no restart anywhere.
+
+
+
+
+
+
+
+## Common first-run failures
+
+- **`GLIBC_2.38 not found` on an instance**
+
+  The binary was built outside the OL9 container. Run `build-in-ol9.sh`.
+
+- **Build fails fetching `zpr-common`**
+
+  The container has no network or no git access to GitHub.
+
+- **`cargo build --locked` fails**
+
+  `Cargo.lock` is stale in a checkout. Update and commit it there.
+
+- **`vs` rejects the policy, or `zplc` errors on a classname**
+
+  The `.bin2` was compiled by a mismatched `zplc`. Recompile it as described above.
+
+- **Tofu: `No value for required variable "ph_binary_path"`**
+
+  `build-in-ol9.sh` has not run, so `binaries.auto.tfvars` does not exist.
+
+- **`vs-admin` returns 401**
+
+  The cached `.vs-admin.key` went stale after a destroy/reapply. `vs-admin.sh`
+  re-fetches it, so check that cloud-init key generation ran.
+
+- **Compose: `ZPR_CORE_SRC — run ./gen-env.sh`**
+
+  `setup/egress/.env` is missing or predates this change.
+
+## Where things live
+
+- **[oci-compute/](oci-compute/README.md)**
+
+  The OCI deployment (three instances) and operator scripts. **Start here.**
+
+- **[oci-compute/TOPOLOGY.md](oci-compute/TOPOLOGY.md)**
+
+  Diagram, port matrix, and deployment gotchas.
+
+- **[setup/](setup/README.md)**
+
+  ZPL policy, keys, configs, and the single-laptop nine-terminal runbook.
+
+- **`devices/`**
+
+  The two Python MQTT device simulators.
+
+- **`oci-iot/`**
+
+  OpenTofu for the Oracle IoT Platform side (digital twins and vault).
+
+- **[portability.md](portability.md)**
+
+  The plan behind the `sources.env` scheme.
+
+- **`outdated/`**
+
+  Superseded and unmaintained material.
+
+

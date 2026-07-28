@@ -160,8 +160,32 @@ Then verify with `./oci-compute/preflight.sh`, and drive policy live with
 `./oci-compute/attribute.sh` and `./oci-compute/vs-admin.sh`. Full walkthrough and
 expected output: [oci-compute/README.md](oci-compute/README.md).
 
+## Teardown
 
+The reverse of steps 6–7. Compute goes first, since it reads `oci-iot`'s outputs:
 
+```bash
+tofu -chdir=oci-compute destroy
+tofu -chdir=oci-iot destroy
+```
+
+That is the whole teardown — both stacks together own the three instances, the VCN,
+the artifacts bucket (objects and PAR included), and the IoT domain, twins, and vault.
+Nothing runs on your laptop in the OCI variant, so there are no containers to stop
+(`setup/egress` Compose belongs to the single-laptop path only).
+
+Two things to know:
+
+- **The KMS vault does not disappear.** `destroy` only *schedules* it, on OCI's minimum
+  7-day pending window; it stays visible in the console until then, and a re-apply
+  before that creates a new vault rather than reusing it.
+- **Live attributes are lost, which is the point.** `attribute.sh set` edits only the
+  copy on zpr-core. Worth keeping? `attribute.sh show`, then fold it into
+  `setup/attrfile.json` before destroying.
+
+For short gaps, **stop** the instances in the OCI console instead — see
+[Cost hygiene](oci-compute/README.md#cost-hygiene). Rerun `post-init.sh` after a
+restart, since ZPR re-grants dynamic addresses on boot.
 
 ## General Idea of How To Run The Demo
 

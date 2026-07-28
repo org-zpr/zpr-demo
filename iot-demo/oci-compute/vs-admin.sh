@@ -12,15 +12,20 @@
 #
 # Prereqs: a key exists in the vs keys file and its full string is in ./.vs-admin.key
 # (created via vsapikey on zpr-core). Override paths with env vars if needed.
-source "$(dirname "$0")/lib.sh"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[ -f "$HERE/sources.env" ] && . "$HERE/sources.env"
+source "$HERE/lib.sh"
 
-VSADMIN="${VSADMIN:-/home/othomas/zpr/visaservice/target/debug/vs-admin}"
-VS_CA="${VS_CA:-/home/othomas/zpr/demo/iot-demo/setup/authority/auth-ca.crt}"
-KEYFILE_DEFAULT="$(dirname "$0")/.vs-admin.key"
+# A plain laptop debug build, NOT an OL9 build: vs-admin runs locally over the SSH
+# tunnel and never ships to an instance. The CA lives in this repo, so derive it.
+VSADMIN="${VSADMIN:-${ZPR_VS_SRC:-}/target/debug/vs-admin}"
+VS_CA="${VS_CA:-$HERE/../setup/authority/auth-ca.crt}"
+KEYFILE_DEFAULT="$HERE/.vs-admin.key"
 KEYFILE="${VS_KEYFILE:-$KEYFILE_DEFAULT}"
 LPORT="${VS_LPORT:-8182}"
 
-[ -x "$VSADMIN" ] || { echo "vs-admin not found/executable: $VSADMIN (build it: cd ~/zpr/visaservice && cargo build -p vs-admin)" >&2; exit 1; }
+[ -x "$VSADMIN" ] || { echo "vs-admin not found/executable: $VSADMIN (build it: cd \$ZPR_VS_SRC && cargo build -p vs-admin)" >&2; exit 1; }
+[ -f "$VS_CA" ] || { echo "CA cert not found: $VS_CA" >&2; exit 1; }
 
 # Keep the auto-managed key in sync with the running core. cloud-init regenerates the
 # key on every fresh instance (into $ZPR_DIR/vs/admin-api.key), so a cached local copy

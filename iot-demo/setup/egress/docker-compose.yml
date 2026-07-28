@@ -15,8 +15,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - /home/othomas/zpr/core/target/debug/ph:/app/ph:ro
-      - /home/othomas/zpr/demo/iot-demo/setup:/certs:ro
+      # A laptop debug build of ph — this adapter runs in local Docker, not on OL9.
+      # ZPR_CORE_SRC comes from .env too (gen-env.sh copies it out of sources.env).
+      - ${ZPR_CORE_SRC:?set ZPR_CORE_SRC — run ./gen-env.sh}/target/debug/ph:/app/ph:ro
+      - ../:/certs:ro
       - ./adapter-conf.toml:/app/adapter-conf.toml:ro
     networks:
       zpr-egress:

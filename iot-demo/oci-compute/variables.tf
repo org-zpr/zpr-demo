@@ -85,22 +85,22 @@ variable "zpr_dir" {
 ############################
 # Artifacts (staged in Object Storage)
 ############################
+# No defaults: build-in-ol9.sh writes these three into binaries.auto.tfvars, which
+# tofu loads automatically. A default here would let a stale path survive a change
+# to the build output location and silently upload a previous build's binary.
 variable "ph_binary_path" {
   type        = string
-  description = "Path to the ph binary. OL9-built release (glibc 2.34) from build-in-ol9.sh."
-  default     = "/home/othomas/zpr/oci-build/release/ph"
+  description = "Path to the ph binary. OL9-built release (glibc 2.34); set by build-in-ol9.sh."
 }
 
 variable "vs_binary_path" {
   type        = string
-  description = "Path to the vs binary. OL9-built release (glibc 2.34) from build-in-ol9.sh."
-  default     = "/home/othomas/zpr/oci-build/release/vs"
+  description = "Path to the vs binary. OL9-built release (glibc 2.34); set by build-in-ol9.sh."
 }
 
 variable "vsapikey_binary_path" {
   type        = string
   description = "Path to the vsapikey binary (generates the admin API key at boot). OL9-built."
-  default     = "/home/othomas/zpr/oci-build/release/vsapikey"
 }
 
 variable "par_expiry" {

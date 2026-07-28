@@ -53,10 +53,16 @@ tofu apply
   its outputs for the OCI bridge credentials.
 - **SSH keypair** at `~/.ssh/zpr-demo` (public half is injected into the instances).
   Generate once if missing: `ssh-keygen -t ed25519 -f ~/.ssh/zpr-demo -N ""`.
-- **OL9-compatible binaries**: `ph`/`vs` must be built against Oracle Linux 9's glibc,
-  not your laptop's. Run `./build-in-ol9.sh` (needs Docker); it writes the binaries to
-  `zpr/oci-build/release/`, which is where `variables.tf` (`ph_binary_path` /
-  `vs_binary_path`) already points.
+- **Source paths configured**: `cp sources.env.example sources.env` and point
+  `ZPR_CORE_SRC` / `ZPR_VS_SRC` at your checkouts. Every script here derives its paths
+  from those two. See the top-level [README](../README.md#environment-variables).
+- **OL9-compatible binaries**: `ph`/`vs`/`vsapikey` must be built against Oracle Linux 9's
+  glibc, not your laptop's. Run `./build-in-ol9.sh` (needs Docker); it writes them to
+  `$ZPR_BUILD_DIR/target/release/` and generates `binaries.auto.tfvars`, which tofu loads
+  automatically — `variables.tf` has no defaults for those paths, by design.
+- **A current policy**: `setup/iot-demo.bin2` is committed but built by hand. If the `vs`
+  you're deploying has moved a version, recompile it — see the top-level
+  [README](../README.md#compile-the-policy-manual).
 
 ### 1. Deploy
 
@@ -220,7 +226,7 @@ prints the key). `vsapikey` is in the OL9 build — copy it over if not already 
 
 ```bash
 CORE=$(tofu output -raw zpr_core_public_ip)
-scp -i ~/.ssh/zpr-demo ~/zpr/oci-build/release/vsapikey opc@$CORE:/tmp/
+scp -i ~/.ssh/zpr-demo "$ZPR_BUILD_DIR/target/release/vsapikey" opc@$CORE:/tmp/
 ssh -i ~/.ssh/zpr-demo opc@$CORE 'sudo install -m0755 /tmp/vsapikey /usr/local/bin/
   KEY=$(sudo /usr/local/bin/vsapikey create readwrite admin /vs_keys.toml --init --desc admin)
   sudo systemctl kill -s SIGUSR2 zpr-vs   # reload keys, no restart
@@ -243,9 +249,10 @@ ZPR policy needed):
 ./vs-admin.sh stats
 ```
 
-Build a current `vs-admin` on your laptop first (`cd ~/zpr/visaservice && cargo build
---release -p vs-admin`) so its subcommands match the running vs. Paths are overridable
-via `VSADMIN` / `VS_CA` / `VS_KEYFILE` env vars.
+Build a current `vs-admin` on your laptop first (`cd "$ZPR_VS_SRC" && cargo build -p
+vs-admin`) so its subcommands match the running vs. This is a plain debug build, not an
+OL9 one — `vs-admin` never leaves your machine. `vs-admin.sh` finds it at
+`$ZPR_VS_SRC/target/debug/vs-admin`; override with `VSADMIN` / `VS_CA` / `VS_KEYFILE`.
 
 ### Editing the attribute file (attrfile.json) live
 

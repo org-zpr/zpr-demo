@@ -23,16 +23,31 @@ all adapters connect.
 
 ## Prerequisites (before each run)
 
+Every terminal below expects these three exports. `sources.env` holds your checkout
+paths — see the top-level [README](../README.md#environment-variables):
+
+```bash
+export DEMO=/path/to/zpr-demo/iot-demo     # this repo's iot-demo dir
+. "$DEMO/oci-compute/sources.env"          # ZPR_CORE_SRC / ZPR_VS_SRC
+export PH="$ZPR_CORE_SRC/target/debug/ph"
+export VS="$ZPR_VS_SRC/target/debug/vs"
+```
+
+Laptop debug builds are correct for this runbook — the OL9 build
+(`oci-compute/build-in-ol9.sh`) is only for the OCI instances. Build them with
+`cargo build` in each checkout. `iot-demo.bin2` must have been compiled by a `zplc`
+matching your `vs` — see [Compile the policy](../README.md#compile-the-policy-manual).
+
 The OCI side is provisioned by Terraform in `../oci-iot` (vault secret, digital twin
 model/adapter/instance). Confirm it's applied and refresh the egress bridge credentials:
 
 ```bash
 # OCI stack applied? (prints the instance OCID)
-tofu -chdir=/home/othomas/zpr/demo/iot-demo/oci-iot output device_a_instance_ocid
+tofu -chdir="$DEMO"/oci-iot output device_a_instance_ocid
 
 # Populate setup/egress/.env (gitignored) from tofu outputs — the egress
 # container reads it at startup to build the OCI bridge.
-cd /home/othomas/zpr/demo/iot-demo/setup/egress && ./gen-env.sh
+cd "$DEMO"/setup/egress && ./gen-env.sh
 ```
 
 IMPORTANT: start the node (Terminal 1) **before** the egress container (Terminal 6) —
@@ -46,39 +61,39 @@ Run each in its own terminal, in order; let each settle before the next.
 
 **Terminal 1 — node:**
 ```bash
-cd /home/othomas/zpr/demo/iot-demo/setup
+cd "$DEMO"/setup
 sudo ./reset-tuns.sh
-/home/othomas/zpr/core/target/debug/ph node -c node/node-conf.toml
+"$PH" node -c node/node-conf.toml
 ```
 
 **Terminal 2 — VS adapter:**
 ```bash
-cd /home/othomas/zpr/demo/iot-demo/setup
-/home/othomas/zpr/core/target/debug/ph adapter -c vs/adapter-vs-conf.toml
+cd "$DEMO"/setup
+"$PH" adapter -c vs/adapter-vs-conf.toml
 ```
 
 **Terminal 3 — Visa service:**
 ```bash
-cd /home/othomas/zpr/demo/iot-demo/setup
+cd "$DEMO"/setup
 valkey-cli flushall
-/home/othomas/zpr/visaservice/target/debug/vs -c vs/vs-conf.toml iot-demo.bin2
+"$VS" -c vs/vs-conf.toml iot-demo.bin2
 ```
 
 **Terminal 4 — ingress adapter (allowed):**
 ```bash
-cd /home/othomas/zpr/demo/iot-demo/setup
-sudo /home/othomas/zpr/core/target/debug/ph adapter -c ingress/ingress-adapter-conf.toml
+cd "$DEMO"/setup
+sudo "$PH" adapter -c ingress/ingress-adapter-conf.toml
 ```
 
 **Terminal 5 — ingress2 adapter (blocked):**
 ```bash
-cd /home/othomas/zpr/demo/iot-demo/setup
-sudo /home/othomas/zpr/core/target/debug/ph adapter -c ingress2/ingress2-adapter-conf.toml
+cd "$DEMO"/setup
+sudo "$PH" adapter -c ingress2/ingress2-adapter-conf.toml
 ```
 
 **Terminal 6 — egress container (mosquitto + egress adapter + OCI bridge):**
 ```bash
-cd /home/othomas/zpr/demo/iot-demo/setup/egress
+cd "$DEMO"/setup/egress
 sudo docker compose up --build
 ```
 
@@ -128,7 +143,7 @@ Shows what actually arrives at mosquitto — the midpoint of the chain.
 ## Part D — Run device_a (should flow all the way to OCI) — Terminal 8
 
 ```bash
-cd /home/othomas/zpr/demo/iot-demo
+cd "$DEMO"
 MQTT_BROKER_HOST=<egress-addr> MQTT_BROKER_PORT=1883 BIND_ADDRESS=<ingress-addr> python3 devices/device_a.py
 ```
 
@@ -137,7 +152,7 @@ Verify each hop:
 - ✅ **mosquitto → OCI:** instance content shows matching temp (20–25) / humidity (40–60):
   ```bash
   oci iot digital-twin-instance get-content \
-    --digital-twin-instance-id $(tofu -chdir=/home/othomas/zpr/demo/iot-demo/oci-iot output -raw device_a_instance_ocid)
+    --digital-twin-instance-id $(tofu -chdir="$DEMO"/oci-iot output -raw device_a_instance_ocid)
   ```
   Or watch live in the Console → IoT Platform → ZPR-Demo-Domain → Digital Twin Instances
   → zpr-iot-demo-device-a → content.
@@ -147,7 +162,7 @@ Verify each hop:
 ## Part E — Run device_b (should be blocked) — Terminal 9
 
 ```bash
-cd /home/othomas/zpr/demo/iot-demo
+cd "$DEMO"
 MQTT_BROKER_HOST=<egress-addr> MQTT_BROKER_PORT=1883 BIND_ADDRESS=<ingress2-addr> python3 devices/device_b.py
 ```
 

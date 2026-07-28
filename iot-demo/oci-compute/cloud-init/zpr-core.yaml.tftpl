@@ -296,7 +296,8 @@ runcmd:
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/node/node-noise.key" -o ${zpr_dir}/node/node-noise.key
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/node/node-private-key.pem" -o ${zpr_dir}/node/node-private-key.pem
 
-  # --- vs keys ---
+  # --- vs keys + attribute file (vs-conf.toml's file_ts_dir points at ${zpr_dir}/vs) ---
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/attrfile.json" -o ${zpr_dir}/vs/attrfile.json
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/vs-noise.crt" -o ${zpr_dir}/vs/vs-noise.crt
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/vs-noise.key" -o ${zpr_dir}/vs/vs-noise.key
   - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}core/vs/vs-private-key.pem" -o ${zpr_dir}/vs/vs-private-key.pem

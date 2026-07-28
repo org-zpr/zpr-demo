@@ -48,6 +48,7 @@ locals {
 
     # --- zpr-core: policy + node / vs / egress cert+key material ---
     "core/iot-demo.bin2"                 = "${local.setup}/iot-demo.bin2"
+    "core/vs/attrfile.json"              = "${local.setup}/attrfile.json"
     "core/node/node-noise.crt"           = "${local.setup}/node/node-noise.crt"
     "core/node/node-noise.key"           = "${local.setup}/node/node-noise.key"
     "core/node/node-private-key.pem"     = "${local.setup}/node/node-private-key.pem"

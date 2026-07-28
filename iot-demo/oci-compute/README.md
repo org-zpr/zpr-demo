@@ -25,6 +25,7 @@ port matrix, and the decisions behind this layout.
 | `post-init.sh` | one-time zpr-core setup after `tofu apply` (egress addr + return-path routing) |
 | `restart-core.sh` | sequentially restart the zpr-core ZPR chain (after a binary swap / clean bounce) |
 | `vs-admin.sh` | run `vs-admin` locally against the visa service admin API over an SSH tunnel |
+| `attribute.sh` | set/delete actor attributes in the live `attrfile.json` on zpr-core + flush the vs |
 | `start-device-a.sh` | start the ZPR-allowed device (telemetry → OCI) |
 | `start-device-b.sh` | start the ZPR-blocked device (denied by the visa service) |
 
@@ -245,6 +246,44 @@ ZPR policy needed):
 Build a current `vs-admin` on your laptop first (`cd ~/zpr/visaservice && cargo build
 --release -p vs-admin`) so its subcommands match the running vs. Paths are overridable
 via `VSADMIN` / `VS_CA` / `VS_KEYFILE` env vars.
+
+### Editing the attribute file (attrfile.json) live
+
+`setup/attrfile.json` supplies per-actor attributes (e.g. `OCIApproved`) that policy can
+test. It's uploaded to the bucket and pulled to `/opt/zpr/vs/attrfile.json` at boot;
+`vs-conf.toml` points the vs at that directory via `file_ts_dir` (the vs's CWD is `/`, so
+the path must be explicit).
+
+Use `./attribute.sh` — it edits the file on zpr-core and flushes the vs in one step. No
+restart, and active visas are revalidated against the new data:
+
+```bash
+./attribute.sh set device-a.zpr.org OCIApproved false   # watch its traffic get cut off
+./attribute.sh set device-a.zpr.org OCIApproved true    # ...and come back
+./attribute.sh del device-a.zpr.org OCIApproved         # drop the attr entirely
+./attribute.sh show device-a.zpr.org                    # or `show` for the whole file
+./attribute.sh push                                     # re-push setup/attrfile.json
+```
+
+Setting a value that's already there (or deleting an attr that isn't) prints `-> no
+change` and skips the flush. An unknown actor is an error listing the ones that exist —
+attributes only apply to actors already in the file. `./attribute.sh selftest` checks the
+edit logic offline (no SSH, no OCI).
+
+Manual fallback, if you want to hand-edit or batch several changes:
+
+```bash
+CORE=$(tofu output -raw zpr_core_public_ip)
+ssh -i ~/.ssh/zpr-demo opc@$CORE 'sudo vi /opt/zpr/vs/attrfile.json'
+./vs-admin.sh services -i attrfile --flush
+```
+
+`attrfile` is the service id the vs registers for the attribute file; `--flush` requires
+`-i`.
+
+Edits on the instance are **lost on the next `tofu apply`** that recreates zpr-core —
+copy anything you want to keep back into `setup/attrfile.json` (and `attribute.sh push`
+sends that file back the other way, after an apply or a bad edit).
 
 ## Unverified assumptions (check on first apply / boot)
 

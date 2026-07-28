@@ -1,0 +1,11 @@
+{
+  "device-a.zpr.org": {
+    "OCIApproved": ["true"]
+  },
+  "device-b.zpr.org": {
+    "OCIApproved": ["true"]
+  },
+  "egress.zpr.org" : {
+    "OCIApproved": ["true"]
+  }
+}

@@ -110,12 +110,12 @@ cd "$ZPR_COMPILER_SRC" && cargo build --release
 #    (node/, vs/, device-a/, device-b/, egress/), so any other cwd fails on a
 #    missing key file.
 cd <this repo>/iot-demo/setup
-"$ZPR_COMPILER_SRC/target/release/zplc" iot-demo.zpl -c iot-demo.zplc
+"$ZPR_COMPILER_SRC/target/release/zplc" iot-demo.zpl 
 ```
 
-That writes `iot-demo.bin2` beside the input. Repeat for `iot-demo-deny.zplc` if you use
-the deny-policy variant. Commit the regenerated `.bin2` with the compiler version in the
-commit message so the artifact's provenance stays recoverable.
+That writes `iot-demo.bin2` beside the input. Commit the regenerated `.bin2`
+with the compiler version in the commit message so the artifact's provenance
+stays recoverable.
 
 Unresolved: whether this demo's policy is signed (`zplc -k <private key>`, presumably
 `setup/authority/auth-ca.key`). Nothing in `setup/vs/vs-conf.toml` requires a policy
@@ -220,3 +220,70 @@ expected output: [oci-compute/README.md](oci-compute/README.md).
 - **`outdated/`**
 
   Superseded and unmaintained material.
+
+
+## General Idea of How To Run The Demo
+
+The whole policy is three lines (`setup/iot-demo.zpl`): a device may reach the OCI IoT
+service **iff** it carries `OCIApproved:true`. No rule names device-a or device-b — the
+only thing separating them is `setup/attrfile.json`. So the demo is: flip one attribute,
+watch access follow, in both directions.
+
+You will need these values:
+- `CORE`: `CORE=$(tofu -chdir=oci-compute output -raw zpr_core_public_ip)`
+- `DB`: `DB=$(tofu -chdir=oci-compute output -raw device_b_public_ip)`
+
+**Start from a known state.** The attributes in play are whatever is live on zpr-core,
+not what's in your git tree — a previous run may have left device-b approved. Push the
+repo baseline (device-b `nope`) and confirm:
+
+```bash
+./oci-compute/attribute.sh push
+./oci-compute/attribute.sh show
+```
+
+In a largish terminal, open the vs-admin gui so you can see what's going on.
+
+```bash
+./oci-compute/vs-admin.sh gui
+```
+
+In another terminal keep an eye on the broker:
+
+```bash
+ssh -i ~/.ssh/zpr-demo opc@$CORE "mosquitto_sub -h localhost -p 1883 -t 'devices/#' -v"
+```
+
+You will not see any visas for device-b, nor will you see any MQTT messages from
+device-b. That is because it does not have the `OCIApproved` attribute set
+correctly. So now lets change that and see what happens.
+
+Set the attribute so it matches policy:
+
+```bash
+./oci-compute/attribute.sh set device-b.zpr.org OCIApproved true
+```
+
+Now restart device-b's publisher. This is **required**, not a workaround: device-b runs
+with `Restart=no` (compute.tf — the blocked device fails once and stays down rather than
+spinning in a retry loop), so its earlier denial killed it for good.
+
+```bash
+ssh -i ~/.ssh/zpr-demo opc@$DB 'sudo systemctl start zpr-device'
+```
+
+Its telemetry appears in the broker window and a new visa shows up in vs-admin. Note
+device-b stops at the broker — mosquitto's OCI bridge only forwards
+`devices/device-a/telemetry`, so nothing new lands in the digital twin. Add a second
+`topic` line to the bridge stanza (`oci-compute/cloud-init/zpr-core.yaml.tftpl`) if you
+want that hop too.
+
+Turn device-b off again — any value other than `true` fails the policy:
+
+```bash
+./oci-compute/attribute.sh set device-b.zpr.org OCIApproved nope
+```
+
+The same knob works in reverse on the *allowed* device, which is the more striking
+version: `./oci-compute/attribute.sh set device-a.zpr.org OCIApproved false` revalidates
+its live visa and cuts the running stream off mid-flight, with no restart anywhere.

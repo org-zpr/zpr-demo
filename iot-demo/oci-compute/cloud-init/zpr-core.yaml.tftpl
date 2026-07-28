@@ -29,18 +29,24 @@ bootcmd:
 
 write_files:
   # --- wait-for-network gate: cloud-init runcmd can fire before OCI finishes bringing
-  #     up the instance's network/DNS, causing dnf/curl "Could not resolve host". Block
-  #     until the artifact host resolves (up to ~5 min) before any download. ---
+  #     up the instance's network, causing dnf/curl failures. DNS resolution is NOT a
+  #     sufficient signal — names resolve while the route is still dead, and dnf then
+  #     dies with curl (7) "couldn't connect" on every repo. Gate on an actual HTTPS
+  #     connect to both hosts we depend on (up to ~5 min). ---
   - path: /var/lib/cloud/wait-network.sh
     permissions: "0755"
     content: |
       #!/usr/bin/env bash
-      host=$(echo "${par_base_url}" | sed -E 's#https?://([^/]+)/.*#\1#')
+      par_host=$(echo "${par_base_url}" | sed -E 's#https?://([^/]+)/.*#\1#')
+      # dnf's mirror, built from the same vars the OL9 repo files interpolate.
+      yum_host="yum$(cat /etc/yum/vars/ociregion 2>/dev/null).$(cat /etc/yum/vars/ocidomain 2>/dev/null || echo oracle.com)"
+      # No -f: any HTTP response (even 404) proves the path is up; only connect fails.
       for i in $(seq 1 60); do
-        getent hosts "$host" >/dev/null 2>&1 && exit 0
+        curl -sS -m 5 -o /dev/null "https://$par_host/" 2>/dev/null &&
+          curl -sS -m 5 -o /dev/null "https://$yum_host/" 2>/dev/null && exit 0
         sleep 5
       done
-      echo "network/DNS not ready after ~5min (cannot resolve $host)" >&2
+      echo "network not ready after ~5min ($par_host / $yum_host unreachable)" >&2
       exit 1
 
   # --- static TUN setup (tun9 node, tun8 VS adapter) — ported from reset-tuns.sh ---

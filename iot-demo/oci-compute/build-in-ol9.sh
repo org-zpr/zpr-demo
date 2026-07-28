@@ -35,7 +35,7 @@ mkdir -p "$ZPR_BUILD_DIR"
 # by name and neither build removes the other's output. Cost is recompiling shared
 # deps between the two. --locked fails loudly on a stale Cargo.lock (which the
 # read-only mounts couldn't update anyway) — the right behaviour for a release build.
-sudo docker run --rm \
+docker run --rm \
   -v "$ZPR_CORE_SRC:/src/core:ro" \
   -v "$ZPR_VS_SRC:/src/vs:ro" \
   -v "$ZPR_BUILD_DIR:/out" \

@@ -221,23 +221,23 @@ ssh -i ~/.ssh/zpr-demo opc@$DB 'sudo journalctl -u zpr-device -n 20'
 The visa service exposes an admin HTTPS API on `https://[fd5a:5052::1]:8182` (bound on
 tun8). It needs an API key, and the endpoint is only reachable on zpr-core itself.
 
-**One-time: create an API key on zpr-core** (writes `/vs_keys.toml`, which the vs reads;
-prints the key). `vsapikey` is in the OL9 build — copy it over if not already there:
+**The API key needs no setup.** cloud-init ships `vsapikey` to zpr-core, creates the key
+before the services start (into `/vs_keys.toml`, which the vs reads) and saves the full
+string to `/opt/zpr/vs/admin-api.key`. `vs-admin.sh` re-fetches that into
+`oci-compute/.vs-admin.key` (gitignored) on every run, so it can't go stale after a
+destroy/reapply.
+
+To mint another key by hand — `vsapikey create <read|readwrite> <owner> [keyfile]
+[--init]`; the vs reloads its key file on **SIGUSR2** (no restart, so no AA-race risk):
 
 ```bash
 CORE=$(tofu output -raw zpr_core_public_ip)
-scp -i ~/.ssh/zpr-demo "$ZPR_BUILD_DIR/target/release/vsapikey" opc@$CORE:/tmp/
-ssh -i ~/.ssh/zpr-demo opc@$CORE 'sudo install -m0755 /tmp/vsapikey /usr/local/bin/
-  KEY=$(sudo /usr/local/bin/vsapikey create readwrite admin /vs_keys.toml --init --desc admin)
-  sudo systemctl kill -s SIGUSR2 zpr-vs   # reload keys, no restart
-  echo "$KEY"'
-# paste the printed key into oci-compute/.vs-admin.key (gitignored)
+ssh -i ~/.ssh/zpr-demo opc@$CORE 'sudo /usr/local/bin/vsapikey create readwrite me /vs_keys.toml --desc me
+  sudo systemctl kill -s SIGUSR2 zpr-vs'
+# point vs-admin.sh at it with VS_KEYFILE=... (it leaves non-default key files alone)
 ```
 
-`vsapikey create <read|readwrite> <owner> [keyfile] [--init]`; the vs reloads its key
-file on **SIGUSR2** (no restart, so no AA-race risk).
-
-**Then use `vs-admin` locally over an SSH tunnel** — `./vs-admin.sh <args>` opens a
+**Use `vs-admin` locally over an SSH tunnel** — `./vs-admin.sh <args>` opens a
 forward to the admin endpoint, runs your laptop's `vs-admin`, and closes the tunnel.
 Because the forwarded connection originates on zpr-core it counts as same-host (no extra
 ZPR policy needed):

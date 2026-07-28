@@ -3,7 +3,7 @@
     "OCIApproved": ["true"]
   },
   "device-b.zpr.org": {
-    "OCIApproved": ["true"]
+    "OCIApproved": ["nope"]
   },
   "egress.zpr.org" : {
     "OCIApproved": ["true"]

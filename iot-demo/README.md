@@ -31,12 +31,38 @@ cp oci-compute/sources.env.example oci-compute/sources.env
 $EDITOR oci-compute/sources.env
 ```
 
-| Variable | Points at | Required | Used by |
-|---|---|---|---|
-| `ZPR_CORE_SRC` | `zpr-core` checkout — builds `ph` | yes | `build-in-ol9.sh`, egress Compose, `setup/` runbook |
-| `ZPR_VS_SRC` | `zpr-visaservice` checkout — builds `vs`, `vsapikey`, `vs-admin` | yes | `build-in-ol9.sh`, `vs-admin.sh`, `setup/` runbook |
-| `ZPR_COMPILER_SRC` | `zpr-compiler` checkout — builds `zplc` | for policy compiles | you, by hand |
-| `ZPR_BUILD_DIR` | OL9 build output; defaults to `$HOME/.cache/zpr-oci-build` | no | `build-in-ol9.sh` |
+- **`ZPR_CORE_SRC`**
+
+  Points at: the `zpr-core` checkout, which builds `ph`.
+
+  Required: yes.
+
+  Used by: `build-in-ol9.sh`, egress Compose, and the `setup/` runbook.
+
+- **`ZPR_VS_SRC`**
+
+  Points at: the `zpr-visaservice` checkout, which builds `vs`, `vsapikey`, and
+  `vs-admin`.
+
+  Required: yes.
+
+  Used by: `build-in-ol9.sh`, `vs-admin.sh`, and the `setup/` runbook.
+
+- **`ZPR_COMPILER_SRC`**
+
+  Points at: the `zpr-compiler` checkout, which builds `zplc`.
+
+  Required: for policy compiles.
+
+  Used by: you, by hand.
+
+- **`ZPR_BUILD_DIR`**
+
+  Points at: the OL9 build output. Defaults to `$HOME/.cache/zpr-oci-build`.
+
+  Required: no.
+
+  Used by: `build-in-ol9.sh`.
 
 Two layouts are supported. Split repos:
 
@@ -136,24 +162,61 @@ expected output: [oci-compute/README.md](oci-compute/README.md).
 
 ## Common first-run failures
 
-| Symptom | Cause |
-|---|---|
-| `GLIBC_2.38 not found` on an instance | binary built outside the OL9 container — run `build-in-ol9.sh` |
-| build fails fetching `zpr-common` | container has no network or no git access to GitHub |
-| `cargo build --locked` fails | `Cargo.lock` is stale in a checkout; update and commit it there |
-| `vs` rejects the policy, or `zplc` errors on a classname | `.bin2` compiled by a mismatched `zplc` — recompile (above) |
-| tofu: `No value for required variable "ph_binary_path"` | `build-in-ol9.sh` hasn't run, so `binaries.auto.tfvars` doesn't exist |
-| `vs-admin` 401s | cached `.vs-admin.key` went stale after a destroy/reapply; `vs-admin.sh` re-fetches it, so check cloud-init keygen ran |
-| Compose: `ZPR_CORE_SRC — run ./gen-env.sh` | `setup/egress/.env` missing or predates this change |
+- **`GLIBC_2.38 not found` on an instance**
+
+  The binary was built outside the OL9 container. Run `build-in-ol9.sh`.
+
+- **Build fails fetching `zpr-common`**
+
+  The container has no network or no git access to GitHub.
+
+- **`cargo build --locked` fails**
+
+  `Cargo.lock` is stale in a checkout. Update and commit it there.
+
+- **`vs` rejects the policy, or `zplc` errors on a classname**
+
+  The `.bin2` was compiled by a mismatched `zplc`. Recompile it as described above.
+
+- **Tofu: `No value for required variable "ph_binary_path"`**
+
+  `build-in-ol9.sh` has not run, so `binaries.auto.tfvars` does not exist.
+
+- **`vs-admin` returns 401**
+
+  The cached `.vs-admin.key` went stale after a destroy/reapply. `vs-admin.sh`
+  re-fetches it, so check that cloud-init key generation ran.
+
+- **Compose: `ZPR_CORE_SRC — run ./gen-env.sh`**
+
+  `setup/egress/.env` is missing or predates this change.
 
 ## Where things live
 
-| Path | What |
-|---|---|
-| [oci-compute/](oci-compute/README.md) | the OCI deployment (3 instances) + operator scripts — **start here** |
-| [oci-compute/TOPOLOGY.md](oci-compute/TOPOLOGY.md) | diagram, port matrix, deployment gotchas |
-| [setup/](setup/README.md) | ZPL policy, keys, configs; single-laptop 9-terminal runbook |
-| `devices/` | the two Python MQTT device simulators |
-| `oci-iot/` | OpenTofu for the Oracle IoT Platform side (digital twins, vault) |
-| [portability.md](portability.md) | the plan behind the `sources.env` scheme |
-| `outdated/` | superseded, unmaintained |
+- **[oci-compute/](oci-compute/README.md)**
+
+  The OCI deployment (three instances) and operator scripts. **Start here.**
+
+- **[oci-compute/TOPOLOGY.md](oci-compute/TOPOLOGY.md)**
+
+  Diagram, port matrix, and deployment gotchas.
+
+- **[setup/](setup/README.md)**
+
+  ZPL policy, keys, configs, and the single-laptop nine-terminal runbook.
+
+- **`devices/`**
+
+  The two Python MQTT device simulators.
+
+- **`oci-iot/`**
+
+  OpenTofu for the Oracle IoT Platform side (digital twins and vault).
+
+- **[portability.md](portability.md)**
+
+  The plan behind the `sources.env` scheme.
+
+- **`outdated/`**
+
+  Superseded and unmaintained material.

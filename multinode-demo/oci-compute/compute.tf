@@ -1,9 +1,9 @@
 ############################
-# Compute — two Ubuntu 24.04 instances in the one public subnet.
+# Compute — three Ubuntu 24.04 instances in the one public subnet.
 #   webserver : nginx + landing page (web/index.html)
-#   node      : ZPR substrate host (5000/tcp+udp open) — bare this pass
-# One cloud-init template for both, parameterized by role. No ZPR
-# binaries yet — that's a later pass.
+#   node      : ZPR substrate host (5000/tcp+udp open)
+#   admin     : "admin user" workstation — runs an adapter, operator curls from it
+# One cloud-init template for all, parameterized by role.
 ############################
 
 locals {
@@ -12,6 +12,10 @@ locals {
   hosts = {
     webserver = { tun_addr = "fd5a:5052:8888::8", packages = ["tmux", "nginx"] }
     node      = { tun_addr = "fd5a:5052:90de::10", packages = ["tmux"] }
+    # admin's ZPR address is dynamic (assigned by the visa service), so its
+    # adapter config sets no tun_if and `ph` creates its own TUN — hence no
+    # static tun9 here, and the adapter runs under sudo.
+    admin = { tun_addr = "", packages = ["tmux", "curl"] }
   }
 }
 

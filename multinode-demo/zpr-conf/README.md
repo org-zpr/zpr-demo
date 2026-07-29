@@ -15,6 +15,11 @@ host: "web 0"
 - zpr addr: `fd5a:5052:8888::8`
 - CN: `ociweb.demo`
 
+host: "admin"
+- lives: OCI
+- zpr addr: dynamic
+- CN: `admin.demo`
+
 host: "vs"
 - lives: local
 - zpr addr: `fd5a:5052::1`

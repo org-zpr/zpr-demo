@@ -5,7 +5,10 @@ hostname: ${hostname}
 # single failed apt-get update leaves noble-updates unindexed (valkey-server
 # lives only there) or fails outright (unresolvable mirror).
 
+%{ if tun_addr != "" || web_index != "" ~}
 write_files:
+%{ endif ~}
+%{ if tun_addr != "" ~}
   - path: /usr/local/sbin/setup-tun9.sh
     permissions: "0755"
     content: |
@@ -29,6 +32,7 @@ write_files:
       ExecStart=/usr/local/sbin/setup-tun9.sh
       [Install]
       WantedBy=multi-user.target
+%{ endif ~}
 %{ if web_index != "" ~}
   - path: /var/www/html/index.html
     permissions: "0644"
@@ -51,4 +55,6 @@ runcmd:
   - iptables -I INPUT 1 -p udp --dport 5000 -j ACCEPT
   - netfilter-persistent save
   - systemctl daemon-reload
+%{ if tun_addr != "" ~}
   - systemctl enable --now zpr-tun.service
+%{ endif ~}

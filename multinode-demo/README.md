@@ -9,9 +9,16 @@
 
 ## How to install (OCI hosts)
 
-Brings up two Ubuntu 24.04 instances (`webserver`, `node`) in OCI —
-SSH-reachable, able to reach each other by private IP, with a `tun9` interface,
-and nginx on the webserver. No ZPR components yet.
+Brings up three Ubuntu 24.04 instances in OCI — SSH-reachable and able to reach
+each other by private IP:
+
+| host        | role                                        | `tun9`                  |
+|-------------|---------------------------------------------|-------------------------|
+| `node`      | ZPR substrate node (node0), 5000 tcp+udp    | `fd5a:5052:90de::10`    |
+| `webserver` | nginx + landing page (`oci-compute/web/`)   | `fd5a:5052:8888::8`     |
+| `admin`     | "admin user" workstation, runs an adapter   | none — dynamic ZPR addr |
+
+No ZPR components yet at this stage.
 
 **Prerequisites:** `tofu` + `oci` CLIs installed, `~/.oci/config` set up (profile
 `DEFAULT`), and the demo SSH key present at `~/.ssh/zpr-demo(.pub)`.
@@ -35,7 +42,7 @@ ssh -i ~/.ssh/zpr-demo ubuntu@<public_ip>
 **Verify (per host):**
 
 ```bash
-ip addr show tun9                       # role's fd5a:... address, state UP
+ip addr show tun9                       # role's fd5a:... address, state UP (not on admin)
 ping <other-host-private-ip>            # inter-host IP works
 curl http://<webserver_public_ip>/      # "hello from OCI"
 ```
@@ -55,7 +62,7 @@ tofu apply -replace='oci_core_instance.host["webserver"]'
 ## How to deploy & run ZPR (OCI hosts)
 
 Once the infra is up, `oci-compute/deploy-zpr.sh` puts the `ph` binary + configs
-on both hosts, injects the node's private IP into the web adapter config, and
+on all three hosts, injects the node's private IP into the adapter configs, and
 starts each `ph` in a detached `tmux` session in the right order. See
 [`tf-configure-run-zpr.md`](work/tf-configure-run-zpr.md) for the design.
 
@@ -71,11 +78,13 @@ same-size copy, and each `ph` is restarted cleanly (old tmux session killed
 first). Re-run after any `tofu apply` that recreated the `node` (its private IP
 is what gets injected). Override the SSH key with `SSH_KEY=/path ./deploy-zpr.sh`.
 
-**Watch a `ph` process** (session name = role; Ctrl-b d to detach):
+**Watch a `ph` process** (session name = mode: `node` or `adapter`; Ctrl-b d to
+detach):
 
 ```bash
-ssh -i ~/.ssh/zpr-demo -t ubuntu@<node_public_ip> tmux attach -t node
-ssh -i ~/.ssh/zpr-demo -t ubuntu@<web_public_ip>  tmux attach -t adapter
+ssh -i ~/.ssh/zpr-demo -t ubuntu@<node_public_ip>  tmux attach -t node
+ssh -i ~/.ssh/zpr-demo -t ubuntu@<web_public_ip>   tmux attach -t adapter
+ssh -i ~/.ssh/zpr-demo -t ubuntu@<admin_public_ip> tmux attach -t adapter
 ```
 
 **Check state without attaching:**
@@ -98,9 +107,75 @@ an `include/` dir with only the certs/keys that config references. Runtime dir
 script). Note `/var/run` is tmpfs — re-run the script after a host reboot.
 
 **Expected state:** the node's `ph` listens on `0.0.0.0:5000`; the web adapter
-connects to it and verifies its name over noise. The adapter's link then times
-out in `Helloing` until the **visa service** is up — that runs in the local
-docker env (not the OCI hosts), so this is expected for the OCI-only setup.
+connects to it and verifies its name over noise. The adapter's link then cycles
+in `Helloing`, because it needs the **visa service** — which lives in the local
+docker env behind `node1`, and node0 ↔ node1 linking is not implemented yet. So
+`Helloing` is the expected steady state for the OCI side today.
+
+### Full startup sequence (both envs)
+
+**Not achievable yet** — `node0 ↔ node1` linking is unimplemented, so the visa
+service (local, behind `node1`) is unreachable from OCI and every OCI adapter
+cycles in `Helloing`. Starting the docker env first does not change that. The
+intended sequence, once the node link works:
+
+1. **Local docker env** — `./local-compute/deploy-docker.sh` already does this
+   order: `node1` → `vs` → vs adapter → `web1` adapter.
+2. **OCI env** — `node0` first.
+3. **Wait for `node1` to connect to `node0`.** ⚠️ Unimplemented: we don't yet
+   know what that connection looks like from node0's side, so there's nothing
+   to poll for. `deploy-zpr.sh` currently barrels straight past this point.
+4. **Then** the `web0` adapter, **then** the `admin` adapter — the order
+   `deploy-zpr.sh` already uses.
+
+So only step 3 is missing. When the node link lands, add the wait there (see the
+marker in `oci-compute/deploy-zpr.sh`) and the rest of the sequence is in place.
+
+### The `admin` host
+
+The hypothetical admin user's workstation (CN `admin.demo`). Its adapter config
+[`adapter-admin-conf.toml.template`](zpr-conf/confs/adapter-admin-conf.toml.template)
+sets **no** `zpr_addr`/`tun_if` — the address is assigned dynamically by the
+visa service, so `ph` creates its own TUN device and therefore runs under
+`sudo`. Everything else matches the other hosts: `~/zpr/{ph,adapter-admin-conf.toml,include/}`,
+tmux session `adapter`, log tee'd to `~/zpr/adapter.log`.
+
+**SSH in and curl through ZPR** — needs the adapter running *and* a reachable
+visa service, so this does not work yet (see **Current limitation** below):
+
+```bash
+ssh -i ~/.ssh/zpr-demo ubuntu@$(tofu -chdir=oci-compute output -json public_ips | jq -r .admin)
+
+curl -v http://[fd5a:5052:8888::8]/     # OciWeb  (webserver in OCI)
+curl -v http://[fd5a:5052:8888::9]/     # PremWeb (web1 in the local docker env)
+```
+
+Those are the `zpr.addr`s the policy declares for the two services — see
+`zpr-conf/admin/multinode-demo.zplc.template`. A curl that hangs or is refused
+usually means "no visa", not "no route": check the adapter's output.
+
+Per `zpr-conf/admin/attrfile.json`, `admin.demo` holds `oci_user` but **not**
+`prem_user` — so the `OciWeb` curl should succeed and the `PremWeb` one should be
+denied. Flip that live by editing the mounted copy and flushing the `attrfile`
+service (see the local-docker section below).
+
+**Monitor the admin adapter:**
+
+```bash
+A=$(tofu -chdir=oci-compute output -json public_ips | jq -r .admin)
+
+ssh -i ~/.ssh/zpr-demo -t ubuntu@$A tmux attach -t adapter   # live, Ctrl-b d to detach
+ssh -i ~/.ssh/zpr-demo ubuntu@$A 'tail -f ~/zpr/adapter.log' # follow the log
+ssh -i ~/.ssh/zpr-demo ubuntu@$A 'tmux ls; pgrep -ax ph'     # is it up?
+ssh -i ~/.ssh/zpr-demo ubuntu@$A 'ip -br addr'               # the TUN ph created + its ZPR addr
+```
+
+Restart it with `./deploy-zpr.sh`, or stop it with `sudo pkill -x ph` (plain
+`tmux kill-session` is not enough — `ph` is root here, so tmux running as
+`ubuntu` cannot signal it).
+
+The `curl`s above will work once node-to-node linking lands — see
+[Full startup sequence](#full-startup-sequence-both-envs) above.
 
 
 

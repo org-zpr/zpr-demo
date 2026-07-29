@@ -1,0 +1,8 @@
+[global]
+ca_file = "include/auth-ca.crt"
+
+[adapter]
+name = "admin.demo"
+node_addr = "@@NODE0_ADDR@@:5000"
+node_public_key_file = "include/node0-noise-pub.pem"
+bootstrap_key = "include/admin-private-key.pem"

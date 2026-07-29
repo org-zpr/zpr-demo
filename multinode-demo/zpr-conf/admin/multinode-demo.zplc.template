@@ -35,6 +35,7 @@ expiration_seconds = 3600
 "ociweb.demo" = "../include/web0-public-key.pem"
 "premweb.demo" = "../include/web1-public-key.pem"
 "user.demo" = "../include/client-public-key.pem"
+"admin.demo" = "../include/admin-public-key.pem"
 
 
 [protocols.http]

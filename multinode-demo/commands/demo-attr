@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Edit the visa service's attribute file and flush the vs cache.
+#
+#   ./demo-attr set <actor> <attr> <value>   # attr -> ["value"]; adds if absent
+#   ./demo-attr del <actor> <attr>           # drop attr; actor entry stays as {}
+#   ./demo-attr show [actor]                 # print the live file, or one entry
+#   ./demo-attr push                         # overwrite live from the git baseline, flush
+#   ./demo-attr save                         # copy live back to the git baseline
+#   ./demo-attr selftest                     # offline jq-transform check
+#
+# PRESENCE is what counts, not the value. The .zplc maps each attribute to a tag
+# (`returns_attributes = ["prem_user -> #user.prem_user", ...]`), so any value —
+# including "no" — sets the tag. `set <attr> no` GRANTS. Use `del` to revoke.
+#
+# The live file is bind-mounted into the vs container, so edits are plain local
+# writes; only the flush crosses into the container.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+command -v jq >/dev/null || { echo "error: jq is required" >&2; exit 1; }
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIVE="$MULTI_DIR/local-compute/conf/vs/attrfile.json"   # mounted at /conf/attrfile.json in vs
+BASE="$MULTI_DIR/zpr-conf/admin/attrfile.json"          # the git-tracked baseline
+
+usage() { grep '^#   \./' "$0" >&2; exit 1; }
+
+# --- the transforms: the only non-trivial logic, pinned down by selftest ---
+jq_set() { jq --arg a "$1" --arg k "$2" --arg v "$3" '.[$a][$k] = [$v]'; }
+jq_del() { jq --arg a "$1" --arg k "$2" 'del(.[$a][$k])'; }
+
+canon() { jq -S -c .; }   # canonical form: the file is hand-formatted, so a byte
+                          # compare would report spurious changes.
+
+# --- selftest: the transforms against this demo's actors, offline ---
+selftest() {
+  local base s1 s2 s3 s4 ok=0
+  base='{"user.demo":{"prem_user":["yes"],"oci_user":["yes"]},"admin.demo" : {"oci_user":["yes"]}}'
+  chk() { # <label> <got> <want>
+    local g w
+    g=$(canon <<<"$2"); w=$(canon <<<"$3")
+    [ "$g" = "$w" ] || { echo "FAIL $1"$'\n'"  got  $g"$'\n'"  want $w" >&2; ok=1; return; }
+    echo "ok  $1"
+  }
+
+  s1=$(jq_set user.demo oci_user yes <<<"$base")
+  chk "set to the value already there changes nothing" "$s1" "$base"
+
+  s2=$(jq_del user.demo oci_user <<<"$s1")
+  chk "del drops the attr, leaves the actor entry" "$s2" \
+    '{"user.demo":{"prem_user":["yes"]},"admin.demo":{"oci_user":["yes"]}}'
+
+  s3=$(jq_set user.demo oci_user no <<<"$s2")
+  chk "set re-adds a missing attr" "$s3" \
+    '{"user.demo":{"prem_user":["yes"],"oci_user":["no"]},"admin.demo":{"oci_user":["yes"]}}'
+
+  s4=$(jq_set user.demo oci_user yes <<<"$s3")
+  chk "set replaces an existing value" "$s4" "$base"
+
+  chk "del of an absent attr is a no-op" "$(jq_del admin.demo Nope <<<"$base")" "$base"
+
+  s1=$(jq_del admin.demo oci_user <<<"$base")
+  chk "del can empty an actor entry" "$s1" \
+    '{"user.demo":{"prem_user":["yes"],"oci_user":["yes"]},"admin.demo":{}}'
+  return $ok
+}
+
+cmd="${1:-}"; shift || true
+[ "$cmd" = selftest ] && { selftest; exit; }   # before the LIVE check: no infra needed
+case "$cmd" in set|del|show|push|save) ;; *) usage ;; esac
+
+[ -f "$LIVE" ] || {
+  echo "error: no live attrfile at $LIVE — run local-compute/deploy-docker.sh first" >&2
+  exit 1
+}
+
+# vs-admin exits 0 even when the HTTP call fails, so the output is the only
+# signal. A silent "flushed" that did not flush would make the demo lie.
+flush() {
+  local out
+  out=$("$HERE/demo-vs-admin" services -i attrfile --flush 2>&1) || true
+  printf '%s\n' "$out" | sed 's/^/-> /'
+  if grep -qE 'Error:|error:' <<<"$out"; then
+    echo "error: flush rejected by the visa service (edit IS written; visas still cached)" >&2
+    exit 1
+  fi
+  echo "-> flushed visa service cache"
+}
+
+# apply <transform-fn> <actor> <args...>
+apply() {
+  local fn="$1" actor="$2" before after
+  shift
+  before=$(cat "$LIVE")
+  jq -e --arg a "$actor" 'has($a)' >/dev/null <<<"$before" || {
+    echo "error: no such actor: $actor -- known: $(jq -r 'keys|join(", ")' <<<"$before")" >&2
+    exit 1
+  }
+  [ -n "${NOTE:-}" ] && echo "$NOTE"      # printed only once the actor is known good
+  after=$("$fn" "$@" <<<"$before")
+  [ "$(canon <<<"$before")" = "$(canon <<<"$after")" ] && { echo "-> no change"; exit 0; }
+  jq . <<<"$after" > "$LIVE"
+  echo "-> updated trusted service backing file"
+  flush
+}
+
+case "$cmd" in
+  set)  [ $# -eq 3 ] || usage
+        NOTE="-> note: presence alone sets tag #user.$2 whatever the value — use 'del' to revoke"
+        apply jq_set "$@" ;;
+  del)  [ $# -eq 2 ] || usage
+        NOTE="-> dropping $2 from $1 (clears tag #user.$2)"
+        apply jq_del "$@" ;;
+  show) if [ $# -eq 1 ]; then jq --arg a "$1" '.[$a]' "$LIVE"; else jq . "$LIVE"; fi ;;
+  push) jq empty "$BASE"
+        cp "$BASE" "$LIVE"
+        echo "-> pushed $BASE to the live attrfile"
+        flush ;;
+  # local-compute/conf/ is wiped by every deploy-docker.sh run, so this is how a
+  # live edit survives one.
+  save) jq empty "$LIVE"
+        cp "$LIVE" "$BASE"
+        echo "-> saved the live attrfile back to $BASE" ;;
+esac

@@ -58,6 +58,15 @@ deploy_host() {  # $1=pubip $2=conf-path $3=label
   if ssh_h "$ip" "[ -x zpr/ph ] && [ \$(stat -c%s zpr/ph 2>/dev/null) = $sz ]"; then
     echo "[$label] ph already up-to-date, skipping binary upload"
   else
+    # A running ph IS the destination file, so scp would fail with ETXTBSY. Stop it
+    # first — start_ph brings it back moments later. sudo covers the admin host, where
+    # ph runs as root. -x matches the process name, not the cmdline, so this cannot
+    # match (and kill) our own ssh command.
+    # pkill returns once the signal is SENT, so wait for the process to actually go:
+    # scp'ing into a still-dying ph fails exactly the same way.
+    ssh_h "$ip" "sudo pkill -x ph 2>/dev/null || true; \
+      for _ in \$(seq 25); do pgrep -x ph >/dev/null || break; sleep 0.2; done; \
+      pgrep -x ph >/dev/null && sudo pkill -9 -x ph && sleep 0.5; true"
     scp "${SSH_OPTS[@]}" "$BIN_DIR/ph" "ubuntu@$ip:zpr/"
   fi
   scp "${SSH_OPTS[@]}" "$conf" "ubuntu@$ip:zpr/"

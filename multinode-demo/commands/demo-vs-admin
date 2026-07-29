@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Run vs-admin against the running visa service, filling in --svc-url, --ca-cert
+# and the API key.
+#   ./demo-vs-admin services            # one-shot
+#   ./demo-vs-admin gui                 # or ./demo-vs-admin-gui
+#
+# vs-admin runs inside the vs container because the admin API listens on the vs
+# ZPR address ([fd5a:5052::1]:8182), reachable only from behind an adapter. The
+# key is the same client.key deploy-docker.sh generates each run; it lives on the
+# host and is not mounted into vs, so it goes in via -e VS_API_KEY.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+KEYFILE="$MULTI_DIR/local-compute/client/client.key"
+[ -f "$KEYFILE" ] || {
+  echo "error: no vsapi key at $KEYFILE — run local-compute/deploy-docker.sh first" >&2
+  exit 1
+}
+
+# -it only when there is a terminal: the gui needs it, but piping a one-shot
+# command (`demo-vs-admin services | grep ...`) must still work.
+TTY=(); [ -t 0 ] && TTY=(-it)
+
+exec docker exec -e VS_API_KEY="$(cat "$KEYFILE")" "${TTY[@]}" vs \
+  /app/bin/vs-admin \
+    --svc-url "https://[fd5a:5052::1]:8182" \
+    --ca-cert /conf/include/admin-tls-cert.pem \
+    "$@"

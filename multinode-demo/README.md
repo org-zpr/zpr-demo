@@ -3,9 +3,50 @@
 ## Contents
 
 - `bin` - Binaries to run for the demo
+- `commands` - Operator commands for driving a running demo (see below).
 - `local-compute` - Setup code for the local ("on prem") containers.
 - `oci-compute` - OpenTofu setup for the remote (OCI cloud) instances.
 - `zpr-conf` - All the ZPR config files, certificates, policy, etc.
+
+## Handy commands (`commands/`)
+
+Once both environments are deployed, `commands/` wraps the long-form incantations
+documented further down — one name per ZPR process, one way to reach each. The long
+forms are kept below on purpose: they're the reference when a command misbehaves.
+
+| command | what it does |
+|---|---|
+| `demo-status` | is every `ph` up? last 10 log lines each. Exit 1 if any is down |
+| `demo-check-ph <NAME>` | the same, for one process. Exit 1 when down |
+| `demo-watch-ph <NAME>` | `tail -f` its log. `-a` attaches to the tmux session instead |
+| `demo-restart-ph <NAME>` | relaunch it, using the config the deploy already placed |
+| `demo-shell <NAME>` | interactive shell there, in its ZPR working dir |
+| `demo-watch-vs` | `tail -f` the **visa service** log (not its adapter) |
+| `demo-vs-admin <CMD…>` | `vs-admin` with `--svc-url`, `--ca-cert` and the API key filled in |
+| `demo-vs-admin-gui` | alias for `demo-vs-admin gui` |
+| `demo-attr <set\|del\|show\|push\|save\|selftest>` | edit the attribute file + flush the vs cache |
+
+`<NAME>` is one of:
+
+| NAME | what | where |
+|---|---|---|
+| `node0` | substrate node | OCI `node` |
+| `ociweb` | web adapter | OCI `webserver` |
+| `admin` | admin user's adapter (runs as root) | OCI `admin` |
+| `node1` | substrate node | docker `node1` |
+| `vs` | the visa service's **adapter** | docker `vs` |
+| `premweb` | web adapter | docker `web1` |
+
+OCI addresses come from `tofu output` at call time — nothing to regenerate after a
+`tofu apply`. Override the SSH key with `SSH_KEY=/path`.
+
+`demo-attr` is the one with a self-check: `commands/demo-attr selftest` exercises its
+jq transforms offline, no infra needed.
+
+**Attributes are tags, not values.** The `.zplc` maps each attribute to a tag
+(`prem_user -> #user.prem_user`), so the mere *presence* of the key sets it —
+`demo-attr set admin.demo prem_user no` **grants** `prem_user`. `demo-attr del` is the
+only way to revoke.
 
 ## How to install (OCI hosts)
 
@@ -247,6 +288,8 @@ docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
 ```
 
 Drop `gui` for one-shot commands (e.g. `services`, `policies`, `actors`, `visas`).
+`commands/demo-vs-admin` wraps all of this — `commands/demo-vs-admin-gui`, or
+`commands/demo-vs-admin actors`.
 
 **Editing the attribute file (`attrfile.json`) live:** `zpr-conf/admin/attrfile.json`
 holds the JSON attributes referenced by the policy and read by the visa service.
@@ -267,6 +310,16 @@ docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
 
 `local-compute/conf/` is regenerated on every deploy, so copy the edit back into
 `zpr-conf/admin/attrfile.json` to keep it.
+
+`commands/demo-attr` does all of the above in one step — edit, flush, and
+`demo-attr save` for the copy-back:
+
+```bash
+commands/demo-attr show                        # the live file
+commands/demo-attr del admin.demo oci_user     # edit + flush
+commands/demo-attr save                        # keep it across the next deploy
+commands/demo-attr push                        # or throw it away, back to the baseline
+```
 
 **Updating the policy** (edited `zpr-conf/admin/multinode-demo.zpl` or
 `multinode-demo.zplc.template`): just re-run `./local-compute/deploy-docker.sh`.

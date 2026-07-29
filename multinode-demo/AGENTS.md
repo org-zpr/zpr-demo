@@ -13,6 +13,7 @@ Sub plans are in `work/` directory - in order of completion:
 4. `work/docker-configure-run-zpr.md` (§5–8, local docker env) - DONE
 5. `work/docker-configure-run-zpr-steps.md` - DONE
 6. `work/endpoint-to-device-plan.md` - DONE
+7. `scripts-plan.md` + `scripts-steps.md` (operator commands in `commands/`) - DONE
 
 
 

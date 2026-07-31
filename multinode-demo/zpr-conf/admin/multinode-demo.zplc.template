@@ -1,0 +1,55 @@
+# minimal config so that we can test parsing the RFC zpl
+
+[nodes.n0]
+provider = [["device.zpr.adapter.cn", "node0.demo"]]
+zpr_address = "fd5a:5052:90de::10"
+
+[nodes.n0.substrate_addrs]
+i0 = "@@NODE0_PUBLIC_ADDR@@:5000"
+
+[nodes.n1]
+provider = [["device.zpr.adapter.cn", "node1.demo"]]
+zpr_address = "fd5a:5052:90de::11"
+
+[nodes.n1.substrate_addrs]
+# TODO: Is this going to work? In demo scenario I presum on-prem cannot be reached (its behind firewall and nat).
+# I think node 1 will SYN to NODE 0 not the other way around.
+i0 = "@@NODE1_EXT_ADDR@@:5000"
+
+[links.n0n1]
+peers = [{node="n0"}, {node="n1"}]
+
+
+[trusted_services.default]
+
+[trusted_services.attrfile]
+api = "file"
+returns_attributes = ["prem_user -> #user.prem_user", "oci_user -> #user.oci_user"]
+expiration_seconds = 3600
+
+
+[bootstrap]
+"node0.demo" = "../include/node0-public-key.pem"
+"node1.demo" = "../include/node1-public-key.pem"
+"vs.zpr" = "../include/vs-public-key.pem"
+"ociweb.demo" = "../include/web0-public-key.pem"
+"premweb.demo" = "../include/web1-public-key.pem"
+"user.demo" = "../include/client-public-key.pem"
+"admin.demo" = "../include/admin-public-key.pem"
+
+
+[protocols.http]
+l4protocol = "TCP"
+port = 80
+
+
+[services.OciWeb]
+protocol = "http"
+port = "80"
+provider = [[ "device.zpr.adapter.cn", "ociweb.demo" ], ["zpr.addr", "fd5a:5052:8888::8"]]
+
+[services.PremWeb]
+protocol = "http"
+port = "80"
+provider = [[ "device.zpr.adapter.cn", "premweb.demo" ], ["zpr.addr", "fd5a:5052:8888::9" ]]
+

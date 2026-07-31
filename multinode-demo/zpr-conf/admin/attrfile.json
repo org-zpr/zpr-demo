@@ -1,0 +1,10 @@
+{
+  "user.demo": {
+    "prem_user": ["yes"],
+    "oci_user": ["yes"]
+  },
+  "admin.demo": {
+    "oci_user": ["yes"]
+  }
+}
+

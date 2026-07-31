@@ -1,0 +1,60 @@
+#cloud-config
+hostname: ${hostname}
+# NB: packages are installed in runcmd (not the packages: module) so we can
+# retry apt — on first boot cloud-init races OCI's DNS/network bring-up, and a
+# single failed apt-get update leaves noble-updates unindexed (valkey-server
+# lives only there) or fails outright (unresolvable mirror).
+
+%{ if tun_addr != "" || web_index != "" ~}
+write_files:
+%{ endif ~}
+%{ if tun_addr != "" ~}
+  - path: /usr/local/sbin/setup-tun9.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      ip link show tun9 &>/dev/null && ip link delete tun9 || true
+      ip tuntap add name tun9 mode tun multi_queue
+      ip link set tun9 mtu 1400
+      ip addr add ${tun_addr}/32 dev tun9      # /32 matches iot-demo's working config
+      ip link set tun9 up
+  - path: /etc/systemd/system/zpr-tun.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR static TUN (tun9)
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/local/sbin/setup-tun9.sh
+      [Install]
+      WantedBy=multi-user.target
+%{ endif ~}
+%{ if web_index != "" ~}
+  - path: /var/www/html/index.html
+    permissions: "0644"
+    content: |
+      ${indent(6, web_index)}
+%{ endif ~}
+
+runcmd:
+  # Retry apt until DNS/mirrors are reachable — both update AND install fetch can
+  # lose the boot-time DNS race, so each gets its own retry loop.
+  - for i in $(seq 1 10); do apt-get update && break || sleep 10; done
+  - for i in $(seq 1 10); do DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent ${join(" ", packages)} && break || sleep 10; done
+  # Open host firewall for the ports the security list already allows.
+  # (OCI Ubuntu image rejects inbound except SSH; insert at top of INPUT.)
+  # Port 80 is intra-VCN only on the webserver — external HTTP is ZPR-managed.
+%{ if web_index != "" ~}
+  - iptables -I INPUT 1 -p tcp -s ${vcn_cidr} --dport 80 -j ACCEPT
+%{ endif ~}
+  - iptables -I INPUT 1 -p tcp --dport 5000 -j ACCEPT
+  - iptables -I INPUT 1 -p udp --dport 5000 -j ACCEPT
+  - netfilter-persistent save
+  - systemctl daemon-reload
+%{ if tun_addr != "" ~}
+  - systemctl enable --now zpr-tun.service
+%{ endif ~}

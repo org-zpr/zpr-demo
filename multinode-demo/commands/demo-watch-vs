@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Follow the visa service's own log — not its ph adapter (that's demo-watch-ph vs).
+#   ./demo-watch-vs
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+log="$LOGS_DIR/vs.log"
+[ -f "$log" ] || { echo "error: no log at $log — has local-compute/deploy-docker.sh run?" >&2; exit 1; }
+exec tail -f "$log"

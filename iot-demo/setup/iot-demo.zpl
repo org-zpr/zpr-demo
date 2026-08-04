@@ -1,5 +1,4 @@
-define IoTDevice as an endpoint with zpr.adapter.cn:'ingress.zpr.org'
-define OracleIoT as a service with endpoint.zpr.adapter.cn:'egress.zpr.org'
+define OracleIoT as a service.
+define VerifiedIoTDevice as a device with OCIApproved:true.
 
-allow IoTDevice to access OracleIoT
-
+allow VerifiedIoTDevices to access OracleIoT.

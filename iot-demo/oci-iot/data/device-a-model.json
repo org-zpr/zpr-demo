@@ -1,0 +1,15 @@
+{
+  "@context": [
+    "dtmi:dtdl:context;3",
+    "dtmi:dtdl:extension:quantitativeTypes;1",
+    "dtmi:dtdl:extension:historization;1"
+  ],
+  "@type": "Interface",
+  "@id": "dtmi:zpr:iot:device;1",
+  "displayName": "ZPR Demo Device",
+  "description": "Temperature/humidity telemetry from the ZPR IoT demo device_a (paho MQTT publisher). Mirrors the device_a.py read_sensors() payload.",
+  "contents": [
+    { "@type": ["Telemetry", "Temperature", "Historized"], "name": "temperature_c", "schema": "double", "unit": "degreeCelsius" },
+    { "@type": ["Telemetry", "RelativeHumidity", "Historized"], "name": "humidity_pct", "schema": "double", "unit": "percent" }
+  ]
+}

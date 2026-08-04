@@ -1,0 +1,2 @@
+# Contains the OCI device password — never commit.
+.env

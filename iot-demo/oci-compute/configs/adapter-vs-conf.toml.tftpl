@@ -1,0 +1,14 @@
+# Rendered by templatefile() -> written to disk by zpr-core cloud-init.
+# Vars: zpr_dir, node_addr. VS adapter is co-located with the node -> node_addr = 127.0.0.1:5000.
+# CN must be "vs.zpr" (set in the cert) so the node recognizes the visa service.
+[global]
+ca_file = "${zpr_dir}/authority/auth-ca.crt"
+certificate_file = "${zpr_dir}/vs/vs-noise.crt"
+private_key_file = "${zpr_dir}/vs/vs-noise.key"
+zpr_addr = [ "fd5a:5052::1" ]
+tun_if = "tun8"
+
+[adapter]
+node_addr = "${node_addr}"
+node_public_key_file = "${zpr_dir}/node/node-noise-pub.pem"
+bootstrap_key = "${zpr_dir}/vs/vs-private-key.pem"

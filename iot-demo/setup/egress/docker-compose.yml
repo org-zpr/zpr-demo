@@ -12,6 +12,8 @@ services:
       OCI_DEVICE_HOST: ${OCI_DEVICE_HOST:-}
       OCI_DEVICE_USERNAME: ${OCI_DEVICE_USERNAME:-}
       OCI_DEVICE_PASSWORD: ${OCI_DEVICE_PASSWORD:-}
+      OCI_DEVICE_B_USERNAME: ${OCI_DEVICE_B_USERNAME:-}
+      OCI_DEVICE_B_PASSWORD: ${OCI_DEVICE_B_PASSWORD:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

@@ -27,4 +27,4 @@ port = 1883
 
 [services.OracleIoT]
 protocol = "mqtt"
-provider =  [[  "device.zpr.adapter.cn", "egress.zpr.org" ] ]
+provider = [ [ "device.zpr.adapter.cn", "egress.zpr.org" ] ]

@@ -129,7 +129,8 @@ Rerun after any stop/start — restarted adapters get NEW dynamic addresses.
 ## Deployment gotchas (learned on first real deploy — all fixed in the templates)
 
 1. **glibc** — laptop-built `ph`/`vs` need glibc 2.38/2.39; OL9 has 2.34. Build in an
-   OL9 container (`build-in-ol9.sh` → `oci-build/release/`). musl ruled out (openssl-sys
+   OL9 container (`build-in-ol9.sh` → `$ZPR_BUILD_DIR/target/release/`, default
+   `~/.cache/zpr-oci-build/target/release/`). musl ruled out (openssl-sys
    + aws-lc-sys/cmake). Build deps need EPEL + CodeReady Builder repos.
 2. **EPEL** — valkey + mosquitto live in EPEL, disabled by default; enable it first.
    No separate `mosquitto-clients` pkg (tools ship in `mosquitto`).

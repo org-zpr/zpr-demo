@@ -19,9 +19,11 @@ cd "$(dirname "$0")"
 OCI_DEVICE_HOST="$(tofu -chdir="$TF_DIR" output -raw iot_device_host)"
 OCI_DEVICE_USERNAME="$(tofu -chdir="$TF_DIR" output -raw device_a_username)"
 OCI_DEVICE_PASSWORD="$(tofu -chdir="$TF_DIR" output -raw device_a_password)"
+OCI_DEVICE_B_USERNAME="$(tofu -chdir="$TF_DIR" output -raw device_b_username)"
+OCI_DEVICE_B_PASSWORD="$(tofu -chdir="$TF_DIR" output -raw device_b_password)"
 
 # Guard against empty-but-successful values before writing credentials.
-for v in OCI_DEVICE_HOST OCI_DEVICE_USERNAME OCI_DEVICE_PASSWORD; do
+for v in OCI_DEVICE_HOST OCI_DEVICE_USERNAME OCI_DEVICE_PASSWORD OCI_DEVICE_B_USERNAME OCI_DEVICE_B_PASSWORD; do
   [ -n "${!v}" ] || { echo "ERROR: $v is empty — is the OCI stack applied?" >&2; exit 1; }
 done
 
@@ -30,6 +32,8 @@ done
   printf 'OCI_DEVICE_HOST=%s\n' "$OCI_DEVICE_HOST"
   printf 'OCI_DEVICE_USERNAME=%s\n' "$OCI_DEVICE_USERNAME"
   printf 'OCI_DEVICE_PASSWORD=%s\n' "$OCI_DEVICE_PASSWORD"
+  printf 'OCI_DEVICE_B_USERNAME=%s\n' "$OCI_DEVICE_B_USERNAME"
+  printf 'OCI_DEVICE_B_PASSWORD=%s\n' "$OCI_DEVICE_B_PASSWORD"
 } > .env
 chmod 600 .env
 echo "Wrote $(pwd)/.env (gitignored, 0600)."

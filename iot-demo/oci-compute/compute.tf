@@ -21,9 +21,11 @@ locals {
     par_base_url        = local.par_base_url
     zpr_dir             = var.zpr_dir
     zpr_substrate_port  = var.zpr_substrate_port
-    oci_device_host     = data.terraform_remote_state.oci_iot.outputs.iot_device_host
-    oci_device_username = data.terraform_remote_state.oci_iot.outputs.device_a_username
-    oci_device_password = data.terraform_remote_state.oci_iot.outputs.device_a_password
+    oci_device_host       = data.terraform_remote_state.oci_iot.outputs.iot_device_host
+    oci_device_username   = data.terraform_remote_state.oci_iot.outputs.device_a_username
+    oci_device_password   = data.terraform_remote_state.oci_iot.outputs.device_a_password
+    oci_device_b_username = data.terraform_remote_state.oci_iot.outputs.device_b_username
+    oci_device_b_password = data.terraform_remote_state.oci_iot.outputs.device_b_password
     node_conf           = templatefile("${path.module}/configs/node-conf.toml.tftpl", { zpr_dir = var.zpr_dir })
     vs_adapter_conf     = templatefile("${path.module}/configs/adapter-vs-conf.toml.tftpl", { zpr_dir = var.zpr_dir, node_addr = local.node_addr_core })
     vs_conf             = templatefile("${path.module}/configs/vs-conf.toml.tftpl", { zpr_dir = var.zpr_dir })

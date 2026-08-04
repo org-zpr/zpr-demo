@@ -122,6 +122,8 @@ Unresolved: whether this demo's policy is signed (`zplc -k <private key>`, presu
 verification key, which suggests not. Confirm on your first real compile and record the
 exact command here.
 
+the policy is not signed
+
 ## Getting started
 
 ```bash
@@ -262,8 +264,21 @@ The same knob works in reverse on the *allowed* device, which is the more striki
 version: `./oci-compute/attribute.sh set device-a.zpr.org OCIApproved false` revalidates
 its live visa and cuts the running stream off mid-flight, with no restart anywhere.
 
+```bash
+CORE=$(tofu output -raw zpr_core_public_ip)
+ssh -i ~/.ssh/zpr-demo opc@$CORE \
+  'for u in valkey zpr-tuns zpr-node zpr-vs-adapter zpr-vs zpr-egress mosquitto; do
+     printf "%-16s %s\n" $u $(systemctl is-active $u.service); done'
+```./oci-compute/attribute.sh set device-b.zpr.org OCIApproved true
 
 
+```bash
+CORE=$(tofu output -raw zpr_core_public_ip)
+DA=$(tofu output -raw device_a_public_ip)
+
+# terminal 1 — follow the visa service on zpr-core:
+ssh -i ~/.ssh/zpr-demo opc@$CORE 'sudo journalctl -u zpr-vs -f'
+```
 
 
 

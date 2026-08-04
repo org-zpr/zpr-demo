@@ -24,6 +24,27 @@ output "device_a_instance_ocid" {
   value       = module.device_a_instance.digital_twin_instance_tf_id
 }
 
+output "device_b_username" {
+  description = "MQTT username for the device_b bridge (the instance external key)."
+  value       = "device-b"
+}
+
+output "device_b_password" {
+  description = "MQTT password for the device_b bridge. Retrieve with: tofu output -raw device_b_password"
+  value       = random_password.device_b.result
+  sensitive   = true
+}
+
+output "device_b_secret_ocid" {
+  description = "OCID of the vault secret backing device_b's auth."
+  value       = oci_vault_secret.device_b.id
+}
+
+output "device_b_instance_ocid" {
+  description = "Digital twin instance OCID for device_b."
+  value       = module.device_b_instance.digital_twin_instance_tf_id
+}
+
 output "digital_twin_model_ocid" {
   description = "Digital twin model OCID."
   value       = module.device_model.digital_twin_model_tf_id

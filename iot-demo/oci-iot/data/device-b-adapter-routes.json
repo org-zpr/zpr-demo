@@ -1,0 +1,10 @@
+[
+  {
+    "condition": "*",
+    "description": "device_b CO2/pressure telemetry",
+    "payloadMapping": {
+      "$.co2_ppm": "$.co2_ppm",
+      "$.pressure_hpa": "$.pressure_hpa"
+    }
+  }
+]

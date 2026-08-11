@@ -55,6 +55,7 @@ render "$CONF_TMPL/adapter-vs-conf.toml.template"   "$CONF_ROOT/vs/adapter-vs-co
 render "$CONF_TMPL/adapter-web1-conf.toml.template" "$CONF_ROOT/web1/adapter-web1-conf.toml"
 cp "$SCRIPT_DIR/vs.toml" "$CONF_ROOT/vs/vs.toml"
 cp "$ADMIN/attrfile.json" "$CONF_ROOT/vs/attrfile.json"   # policy attributes, read by vs
+cp "$CONF_TMPL/zpr-dashboard-config.toml" "$CONF_ROOT/vs/config.toml"  # zpr-dashboard reads ./config.toml
 
 # host-side operator client (stays on host, next to client.key)
 render "$CONF_TMPL/adapter-client-conf.toml.template" "$CLIENT_DIR/adapter-client-conf.toml"

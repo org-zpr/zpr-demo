@@ -13,7 +13,9 @@ Sub plans are in `work/` directory - in order of completion:
 4. `work/docker-configure-run-zpr.md` (§5–8, local docker env) - DONE
 5. `work/docker-configure-run-zpr-steps.md` - DONE
 6. `work/endpoint-to-device-plan.md` - DONE
-7. `scripts-plan.md` + `scripts-steps.md` (operator commands in `commands/`) - DONE
+7. `work/scripts-plan.md` + `work/scripts-steps.md` (operator commands in `commands/`) - DONE
+8. `work/use-zpr-dashboard-plan.md` (`zpr-dashboard` TUI + `commands/demo-zpr-dashboard`) - DONE
+9. `work/hosts-files.md` (admin host `/etc/hosts` for `premweb.demo` / `ociweb.demo`) - DONE
 
 
 

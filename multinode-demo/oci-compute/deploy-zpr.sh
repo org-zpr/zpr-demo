@@ -28,11 +28,14 @@ WEB_PUB=$(tf output -json public_ips     | jq -r .webserver)
 ADMIN_PUB=$(tf output -json public_ips   | jq -r .admin)
 echo "node priv=$NODE_PRIV pub=$NODE_PUB ; webserver pub=$WEB_PUB ; admin pub=$ADMIN_PUB"
 
-# tun9 sanity — assume zpr-tun.service is green, fail loud if not.
+# tun9 sanity. Run straight after `tofu apply` and cloud-init may still be
+# installing zpr-tun.service, so wait for it rather than failing the race.
 check_tun9() {  # $1=pubip $2=label
-  ssh_h "$1" "ip addr show tun9 >/dev/null 2>&1" \
-    || { echo "ERROR: tun9 not up on $2 ($1) — check zpr-tun.service" >&2; exit 1; }
-  echo "[$2] tun9 up"
+  for _ in $(seq 60); do
+    ssh_h "$1" "ip addr show tun9 >/dev/null 2>&1" && { echo "[$2] tun9 up"; return; }
+    sleep 5
+  done
+  echo "ERROR: tun9 not up on $2 ($1) after 5min — check zpr-tun.service" >&2; exit 1
 }
 
 # --- Step 1: render *.toml.template -> scratch/*.toml, fail on leftover sentinel ---
@@ -123,6 +126,16 @@ start_ph    "$WEB_PUB" adapter adapter-web0-conf.toml webserver
 # creates its own TUN device and must run as root — hence the sudo prefix.
 deploy_host "$ADMIN_PUB" "$ADMIN_CONF" admin
 start_ph    "$ADMIN_PUB" adapter adapter-admin-conf.toml admin "sudo "
+
+# --- /etc/hosts for the demo web actors (work/hosts-files.md) ---
+# The operator curls premweb.demo / ociweb.demo from this host. Both addresses
+# are fixed by policy (zpr-conf/admin/multinode-demo.zplc.template), so there is
+# nothing to derive — just plant them. Delete-then-append keeps a re-run from
+# stacking duplicate lines.
+ssh_h "$ADMIN_PUB" "sudo sed -i '/ premweb\.demo\$/d;/ ociweb\.demo\$/d' /etc/hosts; \
+  printf 'fd5a:5052:8888::9 premweb.demo\nfd5a:5052:8888::8 ociweb.demo\n' \
+    | sudo tee -a /etc/hosts >/dev/null"
+echo "[admin] /etc/hosts: premweb.demo, ociweb.demo"
 
 echo
 echo "Done. Attach to a ph session to watch its output (Ctrl-b d to detach):"

@@ -15,6 +15,8 @@ Decisions already taken:
 
 - **No `demo-hosts.txt`.** The web-service addresses are hardcoded in policy
   (`fd5a:5052:8888::8` / `::9`), so the operator writes `/etc/hosts` by hand.
+  (Superseded: `oci-compute/deploy-zpr.sh` now plants both entries on the admin
+  host — see `work/hosts-files.md`.)
 - **No generated env file.** `commands/lib.sh` resolves OCI public IPs lazily from
   `tofu output`. Nothing to regenerate after a `tofu apply`, nothing to go stale.
 - **`demo-attr`**, not `attribute.sh` — consistent with the other `demo-*` commands.

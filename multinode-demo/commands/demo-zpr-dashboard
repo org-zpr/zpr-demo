@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# The zpr-dashboard TUI — a richer replacement for `demo-vs-admin gui`.
+#
+# Runs inside the vs container: the admin API listens on the vs ZPR address
+# ([fd5a:5052::1]:8182), which is tun9 inside that container and unreachable from
+# the host. cwd must be /conf because zpr-dashboard reads ./config.toml (planted
+# there by deploy-docker.sh) and resolves its [files] paths relative to it. The
+# API key goes in via -e like demo-vs-admin does: env beats the config file.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+KEYFILE="$MULTI_DIR/local-compute/client/client.key"
+[ -f "$KEYFILE" ] || {
+  echo "error: no vsapi key at $KEYFILE — run local-compute/deploy-docker.sh first" >&2
+  exit 1
+}
+[ -t 0 ] && [ -t 1 ] || {
+  echo "error: zpr-dashboard is a full-screen TUI; run it from a terminal" >&2
+  exit 1
+}
+
+exec docker exec -it -w /conf \
+  -e ZPR_API_KEY="$(cat "$KEYFILE")" \
+  -e TERM="${TERM:-xterm-256color}" \
+  vs /app/bin/zpr-dashboard

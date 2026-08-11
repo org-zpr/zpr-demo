@@ -1,8 +1,8 @@
 ZPR_ROOT ?=
 
-.PHONY: all ph visaservice compiler check-zpr-root clean
+.PHONY: all ph visaservice compiler dashboard check-zpr-root clean
 
-all: ph visaservice compiler
+all: ph visaservice compiler dashboard
 
 check-zpr-root:
 	@test -n "$(ZPR_ROOT)" || { \
@@ -25,6 +25,12 @@ visaservice: check-zpr-root
 	cp "$(ZPR_ROOT)/zpr-visaservice/target/release/vs" \
 		"$(ZPR_ROOT)/zpr-visaservice/target/release/vs-admin" \
 		"$(ZPR_ROOT)/zpr-visaservice/target/release/vsapikey" bin/
+
+# zpr-dashboard is Go, not cargo — its own Makefile builds into its own bin/.
+dashboard: check-zpr-root
+	mkdir -p bin
+	cd "$(ZPR_ROOT)/zpr-visaservice/zpr-dashboard" && $(MAKE) build
+	cp "$(ZPR_ROOT)/zpr-visaservice/zpr-dashboard/bin/zpr-dashboard" bin/
 
 compiler: check-zpr-root
 	mkdir -p bin

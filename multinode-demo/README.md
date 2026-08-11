@@ -24,6 +24,7 @@ forms are kept below on purpose: they're the reference when a command misbehaves
 | `demo-watch-vs` | `tail -f` the **visa service** log (not its adapter) |
 | `demo-vs-admin <CMD…>` | `vs-admin` with `--svc-url`, `--ca-cert` and the API key filled in |
 | `demo-vs-admin-gui` | alias for `demo-vs-admin gui` |
+| `demo-zpr-dashboard` | the `zpr-dashboard` TUI — richer than `demo-vs-admin gui` |
 | `demo-attr <set\|del\|show\|push\|save\|selftest>` | edit the attribute file + flush the vs cache |
 
 `<NAME>` is one of:
@@ -118,6 +119,10 @@ It's re-runnable: the ~200 MB `ph` upload is skipped when the host already has a
 same-size copy, and each `ph` is restarted cleanly (old tmux session killed
 first). Re-run after any `tofu apply` that recreated the `node` (its private IP
 is what gets injected). Override the SSH key with `SSH_KEY=/path ./deploy-zpr.sh`.
+
+It also writes `premweb.demo` (`fd5a:5052:8888::9`) and `ociweb.demo`
+(`fd5a:5052:8888::8`) into the **admin** host's `/etc/hosts`, so
+`curl http://ociweb.demo/` works from there once the demo is up.
 
 **Watch a `ph` process** (session name = mode: `node` or `adapter`; Ctrl-b d to
 detach):
@@ -290,6 +295,13 @@ docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
 Drop `gui` for one-shot commands (e.g. `services`, `policies`, `actors`, `visas`).
 `commands/demo-vs-admin` wraps all of this — `commands/demo-vs-admin-gui`, or
 `commands/demo-vs-admin actors`.
+
+For watching the service, prefer `commands/demo-zpr-dashboard`: the `zpr-dashboard`
+TUI (built from `zpr-visaservice/zpr-dashboard`) is a richer view of the same admin
+API. It also runs inside `vs`, with cwd `/conf` — it has no flags and reads
+`./config.toml`, which `deploy-docker.sh` installs there from
+`zpr-conf/confs/zpr-dashboard-config.toml`. The API key goes in as `ZPR_API_KEY`,
+which overrides the file.
 
 **Editing the attribute file (`attrfile.json`) live:** `zpr-conf/admin/attrfile.json`
 holds the JSON attributes referenced by the policy and read by the visa service.

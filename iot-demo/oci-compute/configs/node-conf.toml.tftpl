@@ -1,0 +1,12 @@
+# Rendered by templatefile() -> written to disk by zpr-core cloud-init.
+# Vars: zpr_dir. The node has a static ZPR address + TUN; no node_addr (it IS the node).
+[global]
+ca_file = "${zpr_dir}/authority/auth-ca.crt"
+certificate_file = "${zpr_dir}/node/node-noise.crt"
+private_key_file = "${zpr_dir}/node/node-noise.key"
+self_addr = "0.0.0.0:5000"
+zpr_addr = [ "fd5a:5052:90de::1" ]
+tun_if = "tun9"
+
+[authentication]
+auth_private_key = "${zpr_dir}/node/node-private-key.pem"

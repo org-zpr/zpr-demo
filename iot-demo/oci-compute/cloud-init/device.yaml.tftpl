@@ -1,0 +1,128 @@
+#cloud-config
+# Device instance first-boot (device-a / device-b). Rendered by templatefile() with:
+#   par_base_url   : PAR URL prefix objects are curled from (ends in .../o/)
+#   zpr_dir        : on-instance base dir (e.g. /opt/zpr)
+#   role_prefix    : bucket prefix for this role's objects (device-a | device-b)
+#   adapter_name   : device-a | device-b  (also the cert-file stem, on-disk subdir, and
+#                    systemd unit suffix zpr-<adapter_name>)
+#   device_script  : device_a.py | device_b.py
+#   adapter_config : rendered ingress adapter .toml (node_addr already filled in)
+#   device_restart : systemd Restart= for the publisher — "on-failure" (device-a, so it
+#                    self-heals if the connection drops) or "no" (device-b, so the blocked
+#                    device fails once and stays down instead of looping forever)
+#
+# Stages the ph binary + this role's certs + device script and installs the adapter +
+# device systemd units, but does NOT start them at boot. The ingress adapter is started
+# by start-device-{a,b}.sh, which runs only after post-init.sh has confirmed zpr-core is
+# fully up — so the adapter's first handshake hits a ready core and never gets stuck
+# retrying (the device instances can't gate on zpr-core's readiness cross-instance the
+# way the co-located egress adapter does). The device publisher is likewise started by
+# start-device once its env file (discovered addresses) is written.
+
+write_files:
+  # --- wait-for-network gate: cloud-init runcmd can fire before OCI finishes bringing
+  #     up the instance's network, causing dnf/curl failures. DNS resolution is NOT a
+  #     sufficient signal — names resolve while the route is still dead, and dnf then
+  #     dies with curl (7) "couldn't connect" on every repo. Gate on an actual HTTPS
+  #     connect to both hosts we depend on (up to ~5 min). ---
+  - path: /var/lib/cloud/wait-network.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      par_host=$(echo "${par_base_url}" | sed -E 's#https?://([^/]+)/.*#\1#')
+      # dnf's mirror, built from the same vars the OL9 repo files interpolate.
+      yum_host="yum$(cat /etc/yum/vars/ociregion 2>/dev/null).$(cat /etc/yum/vars/ocidomain 2>/dev/null || echo oracle.com)"
+      # No -f: any HTTP response (even 404) proves the path is up; only connect fails.
+      for i in $(seq 1 60); do
+        curl -sS -m 5 -o /dev/null "https://$par_host/" 2>/dev/null &&
+          curl -sS -m 5 -o /dev/null "https://$yum_host/" 2>/dev/null && exit 0
+        sleep 5
+      done
+      echo "network not ready after ~5min ($par_host / $yum_host unreachable)" >&2
+      exit 1
+
+  # --- rendered ingress adapter config ---
+  - path: ${zpr_dir}/${adapter_name}/${adapter_name}-adapter-conf.toml
+    permissions: "0644"
+    content: |
+      ${indent(6, adapter_config)}
+
+  # --- systemd unit: ingress adapter (dynamic TUN -> runs as root) ---
+  - path: /etc/systemd/system/zpr-${adapter_name}.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR ${adapter_name} adapter
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      Environment=TZ=UTC
+      RuntimeDirectory=zpr
+      RuntimeDirectoryPreserve=yes
+      ExecStart=/usr/local/bin/ph adapter -c ${zpr_dir}/${adapter_name}/${adapter_name}-adapter-conf.toml
+      Restart=on-failure
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # --- systemd unit: device script (started by post-init once addresses known) ---
+  - path: /etc/systemd/system/zpr-device.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR demo device publisher
+      After=zpr-${adapter_name}.service
+
+      [Service]
+      Type=simple
+      # post-init.sh writes this with MQTT_BROKER_HOST/BIND_ADDRESS after discovery:
+      EnvironmentFile=${zpr_dir}/devices/device.env
+      # -u: unbuffered stdout, so journalctl -f shows each publish as it happens
+      # instead of flushing ~50 lines at a time.
+      ExecStart=/usr/bin/python3 -u ${zpr_dir}/devices/${device_script}
+      Restart=${device_restart}
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+# Make dnf skip momentarily-unreachable repos instead of aborting. Runs before the
+# packages: install below, so a transient outage of an unneeded repo (e.g. ol9_ksplice)
+# doesn't fail python3 install.
+bootcmd:
+  - dnf config-manager --setopt='*.skip_if_unavailable=1' --save || true
+
+runcmd:
+  # --- wait for network/DNS before any dnf/curl (see wait-network.sh) ---
+  - /var/lib/cloud/wait-network.sh
+
+  # --- python deps (installed here, after the network gate, not via packages:
+  # which runs before runcmd) ---
+  - dnf install -y python3 python3-pip
+
+  # --- host firewall (layer 2). The adapter is an OUTBOUND client to the node;
+  # firewalld is stateful so replies are allowed and no inbound rule is required.
+  # (zpr-core, which LISTENS on 5000/udp, is the instance that must open it.) ---
+
+  # --- lay out dirs ---
+  - mkdir -p ${zpr_dir}/authority ${zpr_dir}/node ${zpr_dir}/${adapter_name} ${zpr_dir}/devices
+
+  # --- pull artifacts from the PAR ---
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}bin/ph" -o /usr/local/bin/ph && chmod +x /usr/local/bin/ph
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}shared/auth-ca.crt" -o ${zpr_dir}/authority/auth-ca.crt
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}shared/node-noise-pub.pem" -o ${zpr_dir}/node/node-noise-pub.pem
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}${role_prefix}/${adapter_name}-noise.crt" -o ${zpr_dir}/${adapter_name}/${adapter_name}-noise.crt
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}${role_prefix}/${adapter_name}-noise.key" -o ${zpr_dir}/${adapter_name}/${adapter_name}-noise.key
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}${role_prefix}/${adapter_name}-private-key.pem" -o ${zpr_dir}/${adapter_name}/${adapter_name}-private-key.pem
+  - curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "${par_base_url}${role_prefix}/${device_script}" -o ${zpr_dir}/devices/${device_script}
+
+  # --- python deps for the device script ---
+  - pip3 install --retries 10 --timeout 30 paho-mqtt
+
+  # --- register the units but do NOT start them at boot. start-device-{a,b}.sh starts
+  #     the adapter (and then the publisher) after post-init confirms zpr-core is ready,
+  #     so the adapter never races the core and gets stuck. ---
+  - systemctl daemon-reload

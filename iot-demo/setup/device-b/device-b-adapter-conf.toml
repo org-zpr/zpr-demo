@@ -1,0 +1,9 @@
+[global]
+ca_file = "../authority/auth-ca.crt"
+certificate_file = "device-b-noise.crt"
+private_key_file = "device-b-noise.key"
+
+[adapter]
+node_addr = "192.168.4.237:5000"
+node_public_key_file = "../node/node-noise-pub.pem"
+bootstrap_key = "device-b-private-key.pem"

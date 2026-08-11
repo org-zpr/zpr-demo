@@ -1,0 +1,10 @@
+[
+  {
+    "condition": "*",
+    "description": "device_a temperature/humidity telemetry",
+    "payloadMapping": {
+      "$.temperature_c": "$.temperature_c",
+      "$.humidity_pct": "$.humidity_pct"
+    }
+  }
+]

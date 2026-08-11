@@ -8,6 +8,6 @@ zpr_addr = [ "fd5a:5052::1" ]
 tun_if = "tun8"
 
 [adapter]
-node_addr = "10.137.4.48:5000"
+node_addr = "192.168.4.237:5000"
 node_public_key_file = "../node/node-noise-pub.pem"
 bootstrap_key = "vs-private-key.pem"

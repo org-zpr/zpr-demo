@@ -1,0 +1,16 @@
+{
+  "envelopeMapping": {
+    "timeObserved": "$.timestamp"
+  },
+  "referenceEndpoint": "iot/v1/telemetry",
+  "referencePayload": {
+    "data": {
+      "device_id": "",
+      "sensor_type": "",
+      "timestamp": "",
+      "co2_ppm": 0.0,
+      "pressure_hpa": 0.0
+    },
+    "dataFormat": "JSON"
+  }
+}

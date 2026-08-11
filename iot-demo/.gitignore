@@ -1,1 +1,3 @@
 certs/
+oci-compute/sources.env
+oci-compute/binaries.auto.tfvars

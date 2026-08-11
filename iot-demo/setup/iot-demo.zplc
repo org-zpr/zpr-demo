@@ -1,19 +1,24 @@
 [nodes."node"]
-provider = [ ["endpoint.zpr.adapter.cn", "node.zpr.org"]]
+provider = [ ["device.zpr.adapter.cn", "node.zpr.org"]]
 zpr_address = "fd5a:5052:90de::1"
 
 [trusted_services.default]
 cert_path = "authority/auth-ca.crt"
 
+[trusted_services.attrfile]
+api = "file"
+returns_attributes = ["OCIApproved -> device.OCIApproved"]
+expiration_seconds = 3600
+
 [visa_service]
 dock_node = "node"
-admin_attrs = [ [ "endpoint.zpr.adapter.cn", "admin.zpr.org" ] ]
+admin_attrs = [ [ "device.zpr.adapter.cn", "admin.zpr.org" ] ]
 
 [bootstrap]
 "node.zpr.org" = "node/node-public-key.pem"
 "vs.zpr" = "vs/vs-public-key.pem"
-"ingress.zpr.org" = "ingress/ingress-public-key.pem"
-"ingress2.zpr.org" = "ingress2/ingress2-public-key.pem"
+"device-a.zpr.org" = "device-a/device-a-public-key.pem"
+"device-b.zpr.org" = "device-b/device-b-public-key.pem"
 "egress.zpr.org" = "egress/egress-public-key.pem"
 
 [protocols.mqtt]
@@ -22,3 +27,4 @@ port = 1883
 
 [services.OracleIoT]
 protocol = "mqtt"
+provider = [ [ "device.zpr.adapter.cn", "egress.zpr.org" ] ]

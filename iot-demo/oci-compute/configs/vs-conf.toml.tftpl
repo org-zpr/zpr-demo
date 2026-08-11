@@ -1,0 +1,8 @@
+# Rendered by templatefile() -> written to disk by zpr-core cloud-init.
+# Vars: zpr_dir. Visa service; static vs_addr, no node_addr. Needs valkey up first.
+[core]
+vs_addr = "fd5a:5052::1"
+admin_cert = "${zpr_dir}/vs/admin-tls-cert.pem"
+admin_key = "${zpr_dir}/vs/admin-tls-key.pem"
+# attrfile.json lives here; the vs's CWD is / so it must be pointed at explicitly.
+file_ts_dir = "${zpr_dir}/vs"

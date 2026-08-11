@@ -7,6 +7,7 @@ import json
 import os
 import random
 import time
+from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
@@ -41,7 +42,7 @@ def main():
         payload = {
             "device_id": DEVICE_ID,
             "sensor_type": SENSOR_TYPE,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             **read_sensors(),
         }
         client.publish(TOPIC, json.dumps(payload))

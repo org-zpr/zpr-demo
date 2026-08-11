@@ -1,0 +1,15 @@
+{
+  "@context": [
+    "dtmi:dtdl:context;3",
+    "dtmi:dtdl:extension:quantitativeTypes;1",
+    "dtmi:dtdl:extension:historization;1"
+  ],
+  "@type": "Interface",
+  "@id": "dtmi:zpr:iot:device_b;1",
+  "displayName": "ZPR Demo Device B",
+  "description": "CO2/pressure telemetry from the ZPR IoT demo device_b (paho MQTT publisher). Mirrors the device_b.py read_sensors() payload.",
+  "contents": [
+    { "@type": ["Telemetry", "Historized"], "name": "co2_ppm", "schema": "double" },
+    { "@type": ["Telemetry", "Historized"], "name": "pressure_hpa", "schema": "double" }
+  ]
+}

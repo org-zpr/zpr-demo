@@ -1,3 +1,18 @@
+# ZPR IoT demo — full-system runbook
+
+Demonstrates ZPR policy enforcement on MQTT traffic, then forwards it to the
+Oracle IoT Platform:
+
+```
+device_a → ingress adapter (ZPR) → node → egress adapter (ZPR) → mosquitto → [bridge] → OCI IoT
+device_b → ingress2 adapter (ZPR) → node → DENIED (no visa)
+```
+
+This is the **single-laptop** variant, kept for local development. The demo as presented
+runs on OCI — see the [top-level README](../README.md) for that, including the attribute
+flip that grants and revokes access live. The policy and attribute file described here
+are the same ones the OCI deployment uses.
+
 The MQTT broker (mosquitto) runs in the egress container. Devices connect to the egress
 adapter's ZPR address — from the device's perspective this is just an IPv6 address.
 ZPR routes traffic based on this address: the ingress adapter forwards packets destined
@@ -5,107 +20,184 @@ for the egress ZPR address through the ZPR node to the egress adapter, which del
 them to mosquitto. Devices must also bind to their ingress adapter's ZPR address
 (BIND_ADDRESS) so the source IP matches the ZPR actor identity.
 
-Both addresses are dynamic — discover them from adapter logs after all adapters connect.
+The egress mosquitto then bridges device_a's telemetry up to the OCI IoT Platform over
+TLS (basic auth). All ZPR addresses are dynamic — discover them from adapter logs after
+all adapters connect.
 
-Terminal 1 — Reset TUNs and start the node:
+---
 
-cd /home/othomas/zpr/demo/iot-demo/setup
+## Prerequisites (before each run)
+
+Every terminal below expects these three exports. `sources.env` holds your checkout
+paths — see the top-level [README](../README.md#environment-variables):
+
+```bash
+export DEMO=/path/to/zpr-demo/iot-demo     # this repo's iot-demo dir
+. "$DEMO/oci-compute/sources.env"          # ZPR_CORE_SRC / ZPR_VS_SRC
+export PH="$ZPR_CORE_SRC/target/debug/ph"
+export VS="$ZPR_VS_SRC/target/debug/vs"
+```
+
+Laptop debug builds are correct for this runbook — the OL9 build
+(`oci-compute/build-in-ol9.sh`) is only for the OCI instances. Build them with
+`cargo build` in each checkout. `iot-demo.bin2` must have been compiled by a `zplc`
+matching your `vs` — see [Compile the policy](../README.md#compile-the-policy-manual).
+
+The OCI side is provisioned by Terraform in `../oci-iot` (vault secret, digital twin
+model/adapter/instance). Confirm it's applied and refresh the egress bridge credentials:
+
+```bash
+# OCI stack applied? (prints the instance OCID)
+tofu -chdir="$DEMO"/oci-iot output device_a_instance_ocid
+
+# Populate setup/egress/.env (gitignored) from tofu outputs — the egress
+# container reads it at startup to build the OCI bridge.
+cd "$DEMO"/setup/egress && ./gen-env.sh
+```
+
+IMPORTANT: start the node (Terminal 1) **before** the egress container (Terminal 6) —
+the egress `ph` adapter needs the node up to complete its handshake.
+
+---
+
+## Part A — Bring up the ZPR network
+
+Run each in its own terminal, in order; let each settle before the next.
+
+**Terminal 1 — node:**
+```bash
+cd "$DEMO"/setup
 sudo ./reset-tuns.sh
-/home/othomas/zpr/core/target/debug/ph node -c node/node-conf.toml
+"$PH" node -c node/node-conf.toml
+```
 
-Terminal 2 — VS adapter:
+**Terminal 2 — VS adapter:**
+```bash
+cd "$DEMO"/setup
+"$PH" adapter -c vs/adapter-vs-conf.toml
+```
 
-cd /home/othomas/zpr/demo/iot-demo/setup
-/home/othomas/zpr/core/target/debug/ph adapter -c vs/adapter-vs-conf.toml
-
-Terminal 3 — Visa service:
-
-cd /home/othomas/zpr/demo/iot-demo/setup
+**Terminal 3 — Visa service:**
+```bash
+cd "$DEMO"/setup
 valkey-cli flushall
-/home/othomas/zpr/visaservice/target/debug/vs -c vs/vs-conf.toml iot-demo.bin2
+"$VS" -c vs/vs-conf.toml iot-demo.bin2
+```
 
-Terminal 4 — Ingress adapter (allowed):
+**Terminal 4 — ingress adapter (allowed):**
+```bash
+cd "$DEMO"/setup
+sudo "$PH" adapter -c ingress/ingress-adapter-conf.toml
+```
 
-cd /home/othomas/zpr/demo/iot-demo/setup
-sudo /home/othomas/zpr/core/target/debug/ph adapter -c ingress/ingress-adapter-conf.toml
+**Terminal 5 — ingress2 adapter (blocked):**
+```bash
+cd "$DEMO"/setup
+sudo "$PH" adapter -c ingress2/ingress2-adapter-conf.toml
+```
 
-Terminal 5 — Ingress2 adapter (blocked):
-
-cd /home/othomas/zpr/demo/iot-demo/setup
-sudo /home/othomas/zpr/core/target/debug/ph adapter -c ingress2/ingress2-adapter-conf.toml
-
-Terminal 6 — Egress container:
-
-cd /home/othomas/zpr/demo/iot-demo/setup/egress
+**Terminal 6 — egress container (mosquitto + egress adapter + OCI bridge):**
+```bash
+cd "$DEMO"/setup/egress
 sudo docker compose up --build
+```
 
---- Discover addresses once all adapters are connected ---
+✅ **Checkpoint A:** Terminal 6 logs show the egress adapter connect (a
+`Link N granted ZPR addresses …` line, *no* `handshake timeout`), then
+`Configuring OCI IoT bridge ->` and `Connecting bridge (step 1/2) oci_iot_device_a`.
 
-Find TUN names: ip link show type tun
+---
 
-From Terminal 4 (ingress) logs:
-  "Link N granted ZPR addresses [IpAddress(V6: <ingress-addr>)]"
+## Part B — Discover addresses & set up routing
 
-From Terminal 5 (ingress2) logs:
-  "Link N granted ZPR addresses [IpAddress(V6: <ingress2-addr>)]"
+```bash
+ip link show type tun        # note the ingress / ingress2 TUN names (e.g. tun0, tun1)
+```
 
-From Terminal 6 (egress container) logs:
-  "Link N granted ZPR addresses [IpAddress(V6: <egress-addr>)]"
+Grab the three ZPR addresses from the adapter logs (`Link N granted ZPR addresses [IpAddress(V6: <addr>)]`):
+- **ingress-addr**  ← Terminal 4
+- **ingress2-addr** ← Terminal 5
+- **egress-addr**   ← Terminal 6
 
---- Set up routing ---
-
-Route traffic to egress through ingress:
-
+Set up routing (substitute your discovered values):
+```bash
+# device_a path: route traffic for the egress address out the ingress TUN
 sudo ip -6 route add <egress-addr> dev <ingress-tun>
 
-For device_b — add a higher-priority source-based rule so its traffic goes via ingress2:
-
+# device_b path: source-based rule so its traffic uses ingress2 instead
 sudo ip -6 rule add from <ingress2-addr> lookup 101
 sudo ip -6 route add <egress-addr> dev <ingress2-tun> table 101
+```
 
-Note: in production, device_b would be on a separate physical network that
-naturally routes through ingress2 — BIND_ADDRESS is a single-host demo workaround.
+Note: in production, device_b would be on a separate physical network that naturally
+routes through ingress2 — BIND_ADDRESS + the source rule are a single-host demo workaround.
+
+✅ **Checkpoint B:** `ip -6 route get <egress-addr>` shows it routing via the ingress TUN.
 
 ---
 
-Terminal 7 — Subscribe to see what arrives at the broker:
+## Part C — Watch the broker (Terminal 7)
 
+```bash
 sudo docker exec -it egress-egress-1 mosquitto_sub -h localhost -p 1883 -t 'devices/#' -v
+```
+Shows what actually arrives at mosquitto — the midpoint of the chain.
 
-Terminal 8 — Run device_a (should get through):
+---
 
-cd /home/othomas/zpr/demo/iot-demo
+## Part D — Run device_a (should flow all the way to OCI) — Terminal 8
+
+```bash
+cd "$DEMO"
 MQTT_BROKER_HOST=<egress-addr> MQTT_BROKER_PORT=1883 BIND_ADDRESS=<ingress-addr> python3 devices/device_a.py
+```
 
-Terminal 9 — Run device_b (should be blocked):
-
-cd /home/othomas/zpr/demo/iot-demo
-MQTT_BROKER_HOST=<egress-addr> MQTT_BROKER_PORT=1883 BIND_ADDRESS=<ingress2-addr> python3 devices/device_b.py
-
-DUMMY
-
-sudo ip -6 route add fd5a:5052:adda:1:12b7:78b6:48a0:1983 dev tun0
-
-For device_b — add a higher-priority source-based rule so its traffic goes via ingress2:
-
-sudo ip -6 rule add from fd5a:5052:adda:1:a19f:3fca:839:3e12 lookup 101
-sudo ip -6 route add fd5a:5052:adda:1:12b7:78b6:48a0:1983 dev tun1 table 101
-
-Note: in production, device_b would be on a separate physical network that
-naturally routes through ingress2 — BIND_ADDRESS is a single-host demo workaround.
+Verify each hop:
+- ✅ **device → ZPR → mosquitto:** Terminal 7 prints `devices/device-a/telemetry {...}` every 5s.
+- ✅ **mosquitto → OCI:** instance content shows matching temp (20–25) / humidity (40–60):
+  ```bash
+  oci iot digital-twin-instance get-content \
+    --digital-twin-instance-id $(tofu -chdir="$DEMO"/oci-iot output -raw device_a_instance_ocid)
+  ```
+  Or watch live in the Console → IoT Platform → ZPR-Demo-Domain → Digital Twin Instances
+  → zpr-iot-demo-device-a → content.
 
 ---
 
-Terminal 7 — Subscribe to see what arrives at the broker:
+## Part E — Run device_b (should be blocked) — Terminal 9
 
-sudo docker exec -it egress-egress-1 mosquitto_sub -h localhost -p 1883 -t 'devices/#' -v
+```bash
+cd "$DEMO"
+MQTT_BROKER_HOST=<egress-addr> MQTT_BROKER_PORT=1883 BIND_ADDRESS=<ingress2-addr> python3 devices/device_b.py
+```
 
-Terminal 8 — Run device_a (should get through):
+✅ **Checkpoint E (the policy demo):** device_b should **not** get through — nothing for
+`devices/device-b/...` in Terminal 7, and nothing new in OCI. Terminal 3 logs
+`denied (no match): no matching policy`, and device_b exits on `socket.timeout`.
 
-cd /home/othomas/zpr/demo/iot-demo
-MQTT_BROKER_HOST=fd5a:5052:adda:1:12b7:78b6:48a0:1983 MQTT_BROKER_PORT=1883 BIND_ADDRESS=fd5a:5052:adda:1:6fea:ae9a:f3c5:4865 python3 devices/device_a.py
+The block is **not** aimed at ingress2. `iot-demo.zpl` names no devices — its one rule
+allows `VerifiedIoTDevices`, defined as *a device with `OCIApproved:true`*. `attrfile.json`
+gives device-a `"true"` and device-b `"nope"`, and that single value is the whole
+difference. Edit `attrfile.json` and restart the vs (Terminal 3) to swap which device
+gets through.
 
-Terminal 9 — Run device_b (should be blocked):
+---
 
-cd /home/othomas/zpr/demo/iot-demo
-MQTT_BROKER_HOST=fd5a:5052:adda:1:12b7:78b6:48a0:1983 MQTT_BROKER_PORT=1883 BIND_ADDRESS=fd5a:5052:adda:1:a19f:3fca:839:3e12 python3 devices/device_b.py
+## Reading the result
+
+| Hop | How you know it worked |
+|-----|------------------------|
+| device_a → ZPR → mosquitto | Terminal 7 shows device-a telemetry |
+| mosquitto → OCI | `get-content` / console shows matching temp & humidity |
+| device_b blocked | Terminal 7 silent for device-b; OCI unchanged |
+
+**Known gotchas:**
+- **Flaky connectivity to OCI** (this host is on WiFi): `get-content` may lag or briefly
+  show a stale value. device_a publishes every 5s and the bridge auto-reconnects
+  (`restart_timeout 30`, QoS 1), so give it a few cycles. A wired network or the
+  OCI-hosted deployment is stable.
+- device_a's **timestamp is microsecond-precision + `Z`** (required by the OCI adapter) —
+  already handled in `devices/device_a.py`.
+- Only **device_a** has an OCI digital twin instance + bridge rule. So even if you
+  approve device_b via `attrfile.json`, its telemetry stops at the broker — it appears in
+  Terminal 7 but never in the digital twin.

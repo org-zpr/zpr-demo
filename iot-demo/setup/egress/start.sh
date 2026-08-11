@@ -13,5 +13,60 @@ sed "s/host.docker.internal/$HOST_IP/" /app/adapter-conf.toml > /tmp/adapter-con
 # Give the adapter a moment to connect before Mosquitto starts
 sleep 2
 
+# Build the runtime Mosquitto config: base listener + (optional) OCI IoT bridge.
+# The bridge stanza mirrors the cloudlabs iot_edge mosquitto.conf.j2, with basic
+# (username/password) auth instead of mTLS. Credentials come from env vars
+# (set via setup/egress/.env, populated from `tofu output`).
+cp /etc/mosquitto/conf.d/zpr.conf /tmp/zpr.conf
+# All-or-nothing: if ANY OCI var is set, require ALL three, so partial creds fail
+# loudly here instead of producing a broken bridge stanza that dies at connect time.
+if [ -n "${OCI_DEVICE_HOST:-}" ] || [ -n "${OCI_DEVICE_USERNAME:-}" ] || [ -n "${OCI_DEVICE_PASSWORD:-}" ]; then
+  : "${OCI_DEVICE_HOST:?missing OCI_DEVICE_HOST}"
+  : "${OCI_DEVICE_USERNAME:?missing OCI_DEVICE_USERNAME}"
+  : "${OCI_DEVICE_PASSWORD:?missing OCI_DEVICE_PASSWORD}"
+  : "${OCI_DEVICE_B_USERNAME:?missing OCI_DEVICE_B_USERNAME}"
+  : "${OCI_DEVICE_B_PASSWORD:?missing OCI_DEVICE_B_PASSWORD}"
+  echo "Configuring OCI IoT bridge -> ${OCI_DEVICE_HOST}"
+  cat >> /tmp/zpr.conf <<EOF
+
+# --- OCI IoT Platform bridge (device_a, basic auth over TLS) ---
+connection oci_iot_device_a
+address ${OCI_DEVICE_HOST}:8883
+bridge_capath /etc/ssl/certs
+bridge_protocol_version mqttv311
+remote_clientid ${OCI_DEVICE_USERNAME}
+remote_username ${OCI_DEVICE_USERNAME}
+remote_password ${OCI_DEVICE_PASSWORD}
+try_private false
+cleansession true
+keepalive_interval 60
+restart_timeout 30
+start_type automatic
+notifications false
+topic "" out 1 devices/device-a/telemetry iot/v1/telemetry
+
+# --- OCI IoT Platform bridge (device_b, basic auth over TLS) ---
+# Separate connection: OCI IoT binds each MQTT connection to one instance via its
+# external_key (= remote_username), so device_b needs its own connection. Only
+# device_b's local topic is forwarded here -> device_b's twin.
+connection oci_iot_device_b
+address ${OCI_DEVICE_HOST}:8883
+bridge_capath /etc/ssl/certs
+bridge_protocol_version mqttv311
+remote_clientid ${OCI_DEVICE_B_USERNAME}
+remote_username ${OCI_DEVICE_B_USERNAME}
+remote_password ${OCI_DEVICE_B_PASSWORD}
+try_private false
+cleansession true
+keepalive_interval 60
+restart_timeout 30
+start_type automatic
+notifications false
+topic "" out 1 devices/device-b/telemetry iot/v1/telemetry
+EOF
+else
+  echo "OCI bridge credentials not set — starting Mosquitto without the OCI bridge."
+fi
+
 # Start Mosquitto in foreground
-mosquitto -c /etc/mosquitto/conf.d/zpr.conf
+mosquitto -c /tmp/zpr.conf

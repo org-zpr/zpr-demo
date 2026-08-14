@@ -46,7 +46,10 @@ services:
       - ./local-compute/entrypoint-web1.sh:/entrypoint.sh:ro
       - ./local-compute/conf/web1:/conf
       - ./local-compute/logs:/logs
-      - ./local-compute/web1-index.html:/var/www/html/index.html:ro
+      # Mount the directory, not the file: a single-file bind mount pins the
+      # inode, so an editor's rename-on-save leaves the container serving the
+      # old content forever.
+      - ./local-compute/web1-www:/var/www/html:ro
     networks:
       zpr-local:
         ipv4_address: 172.30.0.12

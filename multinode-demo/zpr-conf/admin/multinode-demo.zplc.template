@@ -24,7 +24,7 @@ peers = [{node="n0"}, {node="n1"}]
 
 [trusted_services.attrfile]
 api = "file"
-returns_attributes = ["location -> user.location", "role -> user.role{}"]
+returns_attributes = ["location -> user.location", "access -> user.access{}"]
 expiration_seconds = 3600
 
 

@@ -1,11 +1,11 @@
 {
   "user.demo": {
     "location": ["onprem"],
-    "role": ["dev"]
+    "access": ["onprem"]
   },
   "admin.demo": {
     "location": ["oci"],
-    "role": ["dev"]
+    "access": ["cloud"]
   }
 }
 

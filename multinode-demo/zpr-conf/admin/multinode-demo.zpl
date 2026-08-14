@@ -1,12 +1,13 @@
 
-define OciWeb as a service.
-define PremWeb as a service.
+Define OciWeb as a service.
+Define PremWeb as a service.
 
-allow location:oci users to access OciWeb.
-allow location:onprem users to access PremWeb.
+Allow access:cloud users to access OciWeb.
 
-allow role:admin users to access OciWeb.
-allow role:admin users to access PremWeb.
+Allow access:onprem users to access PremWeb.
+
+Allow access:full users to access services.
+
 
 
 

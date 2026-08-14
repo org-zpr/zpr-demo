@@ -1,10 +1,11 @@
 {
   "user.demo": {
-    "prem_user": ["yes"],
-    "oci_user": ["yes"]
+    "location": ["onprem"],
+    "role": ["dev"]
   },
   "admin.demo": {
-    "oci_user": ["yes"]
+    "location": ["oci"],
+    "role": ["dev"]
   }
 }
 

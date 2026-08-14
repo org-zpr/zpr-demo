@@ -16,12 +16,22 @@ KEYFILE="$MULTI_DIR/local-compute/client/client.key"
   exit 1
 }
 
-# -it only when there is a terminal: the gui needs it, but piping a one-shot
-# command (`demo-vs-admin services | grep ...`) must still work.
-TTY=(); [ -t 0 ] && TTY=(-it)
+# -it for the gui only. One-shot commands emit JSON on stdout, and a docker -t
+# pseudo-TTY would sprinkle CRLFs through it and break the jq below.
+TTY=(); [ "${1:-}" = gui ] && [ -t 0 ] && TTY=(-it)
 
-exec docker exec -e VS_API_KEY="$(cat "$KEYFILE")" "${TTY[@]}" vs \
-  /app/bin/vs-admin \
-    --svc-url "https://[fd5a:5052::1]:8182" \
-    --ca-cert /conf/include/admin-tls-cert.pem \
-    "$@"
+run() {
+  docker exec -e VS_API_KEY="$(cat "$KEYFILE")" "${TTY[@]}" vs \
+    /app/bin/vs-admin \
+      --svc-url "https://[fd5a:5052::1]:8182" \
+      --ca-cert /conf/include/admin-tls-cert.pem \
+      "$@"
+}
+
+# vs-admin prints JSON on stdout (cruft stays on stderr, unpiped) — pretty-print
+# it. jq colorizes only when stdout is a terminal, so `... | grep` still gets
+# plain JSON. gui is a TUI, not JSON: run it straight through.
+if [ "${1:-}" = gui ] || ! command -v jq >/dev/null; then
+  run "$@"; exit   # ponytail: no jq installed = raw JSON, good enough
+fi
+run "$@" | jq .

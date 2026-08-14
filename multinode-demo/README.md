@@ -20,12 +20,13 @@ forms are kept below on purpose: they're the reference when a command misbehaves
 | `demo-check-ph <NAME>` | the same, for one process. Exit 1 when down |
 | `demo-watch-ph <NAME>` | `tail -f` its log. `-a` attaches to the tmux session instead |
 | `demo-restart-ph <NAME>` | relaunch it, using the config the deploy already placed |
+| `demo-stop-ph <NAME>…` | stop one or more, host/container left up. Restart with the above |
 | `demo-shell <NAME>` | interactive shell there, in its ZPR working dir |
 | `demo-watch-vs` | `tail -f` the **visa service** log (not its adapter) |
 | `demo-vs-admin <CMD…>` | `vs-admin` with `--svc-url`, `--ca-cert` and the API key filled in |
 | `demo-vs-admin-gui` | alias for `demo-vs-admin gui` |
 | `demo-zpr-dashboard` | the `zpr-dashboard` TUI — richer than `demo-vs-admin gui` |
-| `demo-attr <set\|del\|show\|push\|save\|selftest>` | edit the attribute file + flush the vs cache |
+| `demo-attr <set\|add\|rm\|del\|show\|push\|save\|selftest>` | edit the attribute file + flush the vs cache |
 
 `<NAME>` is one of:
 

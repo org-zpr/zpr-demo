@@ -2,11 +2,11 @@
 define OciWeb as a service.
 define PremWeb as a service.
 
-# `oci_user` and `prem_user` are tags set from trusted service.
+allow location:oci users to access OciWeb.
+allow location:onprem users to access PremWeb.
 
-allow oci_user users to access OciWeb.
-allow prem_user users to access PremWeb.
-
+allow role:admin users to access OciWeb.
+allow role:admin users to access PremWeb.
 
 
 

@@ -2,6 +2,8 @@
 # Edit the visa service's attribute file and flush the vs cache.
 #
 #   ./demo-attr set <actor> <attr> <value>   # attr -> ["value"]; adds if absent
+#   ./demo-attr add <actor> <attr> <value>   # append value to attr; like set if absent
+#   ./demo-attr rm  <actor> <attr> <value>   # drop one value; drops attr if last one
 #   ./demo-attr del <actor> <attr>           # drop attr; actor entry stays as {}
 #   ./demo-attr show [actor]                 # print the live file, or one entry
 #   ./demo-attr push                         # overwrite live from the git baseline, flush
@@ -27,6 +29,12 @@ usage() { grep '^#   \./' "$0" >&2; exit 1; }
 # --- the transforms: the only non-trivial logic, pinned down by selftest ---
 jq_set() { jq --arg a "$1" --arg k "$2" --arg v "$3" '.[$a][$k] = [$v]'; }
 jq_del() { jq --arg a "$1" --arg k "$2" 'del(.[$a][$k])'; }
+jq_add() { jq --arg a "$1" --arg k "$2" --arg v "$3" \
+  '.[$a][$k] = ((.[$a][$k] // []) | if index($v) then . else . + [$v] end)'; }
+# rm of the last value drops the attr: presence is what sets the tag, so leaving
+# an empty [] behind would revoke nothing.
+jq_rm()  { jq --arg a "$1" --arg k "$2" --arg v "$3" \
+  'if .[$a][$k] then (.[$a][$k] -= [$v] | if .[$a][$k] == [] then del(.[$a][$k]) else . end) else . end'; }
 
 canon() { jq -S -c .; }   # canonical form: the file is hand-formatted, so a byte
                           # compare would report spurious changes.
@@ -61,12 +69,27 @@ selftest() {
   s1=$(jq_del admin.demo oci_user <<<"$base")
   chk "del can empty an actor entry" "$s1" \
     '{"user.demo":{"prem_user":["yes"],"oci_user":["yes"]},"admin.demo":{}}'
+
+  s1=$(jq_add user.demo role dev <<<"$base")
+  chk "add creates a missing attr" "$s1" \
+    '{"user.demo":{"prem_user":["yes"],"oci_user":["yes"],"role":["dev"]},"admin.demo":{"oci_user":["yes"]}}'
+
+  s2=$(jq_add user.demo role admin <<<"$s1")
+  chk "add appends to an existing attr" "$s2" \
+    '{"user.demo":{"prem_user":["yes"],"oci_user":["yes"],"role":["dev","admin"]},"admin.demo":{"oci_user":["yes"]}}'
+
+  chk "add of a value already there changes nothing" "$(jq_add user.demo role dev <<<"$s2")" "$s2"
+
+  chk "rm drops one value, keeps the rest" "$(jq_rm user.demo role admin <<<"$s2")" "$s1"
+  chk "rm of the last value drops the attr" "$(jq_rm user.demo role dev <<<"$s1")" "$base"
+  chk "rm of an absent value is a no-op" "$(jq_rm user.demo role nope <<<"$s1")" "$s1"
+  chk "rm on an absent attr is a no-op" "$(jq_rm user.demo Nope x <<<"$base")" "$base"
   return $ok
 }
 
 cmd="${1:-}"; shift || true
 [ "$cmd" = selftest ] && { selftest; exit; }   # before the LIVE check: no infra needed
-case "$cmd" in set|del|show|push|save) ;; *) usage ;; esac
+case "$cmd" in set|add|rm|del|show|push|save) ;; *) usage ;; esac
 
 [ -f "$LIVE" ] || {
   echo "error: no live attrfile at $LIVE — run local-compute/deploy-docker.sh first" >&2
@@ -107,6 +130,12 @@ case "$cmd" in
   set)  [ $# -eq 3 ] || usage
         NOTE="-> note: presence alone sets tag #user.$2 whatever the value — use 'del' to revoke"
         apply jq_set "$@" ;;
+  add)  [ $# -eq 3 ] || usage
+        NOTE="-> adding $3 to $2 for $1 (presence of $2 sets tag #user.$2)"
+        apply jq_add "$@" ;;
+  rm)   [ $# -eq 3 ] || usage
+        NOTE="-> removing $3 from $2 for $1 (clears tag #user.$2 if it was the last value)"
+        apply jq_rm "$@" ;;
   del)  [ $# -eq 2 ] || usage
         NOTE="-> dropping $2 from $1 (clears tag #user.$2)"
         apply jq_del "$@" ;;

@@ -1,10 +1,10 @@
 {
-  "user.demo": {
+  "bob": {
     "location": ["onprem"],
     "access": ["onprem"]
   },
-  "admin.demo": {
-    "location": ["oci"],
+  "alice": {
+    "location": ["cloud"],
     "access": ["cloud"]
   }
 }

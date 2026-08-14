@@ -25,8 +25,8 @@ ssh_h(){ ssh "${SSH_OPTS[@]}" "ubuntu@$1" "${@:2}"; }
 NODE_PRIV=$(tf output -json private_ips | jq -r .node)
 NODE_PUB=$(tf output -json public_ips   | jq -r .node)
 WEB_PUB=$(tf output -json public_ips     | jq -r .webserver)
-ADMIN_PUB=$(tf output -json public_ips   | jq -r .admin)
-echo "node priv=$NODE_PRIV pub=$NODE_PUB ; webserver pub=$WEB_PUB ; admin pub=$ADMIN_PUB"
+ALICE_PUB=$(tf output -json public_ips   | jq -r .alice)
+echo "node priv=$NODE_PRIV pub=$NODE_PUB ; webserver pub=$WEB_PUB ; alice pub=$ALICE_PUB"
 
 # tun9 sanity. Run straight after `tofu apply` and cloud-init may still be
 # installing zpr-tun.service, so wait for it rather than failing the race.
@@ -62,7 +62,7 @@ deploy_host() {  # $1=pubip $2=conf-path $3=label
     echo "[$label] ph already up-to-date, skipping binary upload"
   else
     # A running ph IS the destination file, so scp would fail with ETXTBSY. Stop it
-    # first — start_ph brings it back moments later. sudo covers the admin host, where
+    # first — start_ph brings it back moments later. sudo covers the alice host, where
     # ph runs as root. -x matches the process name, not the cmdline, so this cannot
     # match (and kill) our own ssh command.
     # pkill returns once the signal is SENT, so wait for the process to actually go:
@@ -100,7 +100,7 @@ check_tun9 "$NODE_PUB" node
 check_tun9 "$WEB_PUB"  webserver
 
 WEB_CONF=$(render adapter-web0-conf.toml.template)
-ADMIN_CONF=$(render adapter-admin-conf.toml.template)
+ALICE_CONF=$(render adapter-alice-conf.toml.template)
 
 # §4 step 2: node first.
 deploy_host "$NODE_PUB" "$CONF_DIR/node0-conf.toml" node
@@ -122,30 +122,35 @@ ssh_h "$WEB_PUB" "curl -fsS http://localhost:80 >/dev/null" \
 deploy_host "$WEB_PUB" "$WEB_CONF" webserver
 start_ph    "$WEB_PUB" adapter adapter-web0-conf.toml webserver
 
-# admin user's adapter. Its config sets no tun_if (dynamic ZPR address), so ph
+# alice's adapter. Its config sets no tun_if (dynamic ZPR address), so ph
 # creates its own TUN device and must run as root — hence the sudo prefix.
-deploy_host "$ADMIN_PUB" "$ADMIN_CONF" admin
-start_ph    "$ADMIN_PUB" adapter adapter-admin-conf.toml admin "sudo "
+deploy_host "$ALICE_PUB" "$ALICE_CONF" alice
+start_ph    "$ALICE_PUB" adapter adapter-alice-conf.toml alice "sudo "
 
 # --- /etc/hosts for the demo web actors (work/hosts-files.md) ---
 # The operator curls premweb.demo / ociweb.demo from this host. Both addresses
 # are fixed by policy (zpr-conf/admin/multinode-demo.zplc.template), so there is
 # nothing to derive — just plant them. Delete-then-append keeps a re-run from
 # stacking duplicate lines.
-ssh_h "$ADMIN_PUB" "sudo sed -i '/ premweb\.demo\$/d;/ ociweb\.demo\$/d' /etc/hosts; \
+ssh_h "$ALICE_PUB" "sudo sed -i '/ premweb\.demo\$/d;/ ociweb\.demo\$/d' /etc/hosts; \
   printf 'fd5a:5052:8888::9 premweb.demo\nfd5a:5052:8888::8 ociweb.demo\n' \
     | sudo tee -a /etc/hosts >/dev/null"
-echo "[admin] /etc/hosts: premweb.demo, ociweb.demo"
+echo "[alice] /etc/hosts: premweb.demo, ociweb.demo"
+
+# The banner-curl wrapper (work/fetcher.md). Standalone script, so this one scp is
+# the whole install; lands in the login dir => `./fetch http://premweb.demo`.
+scp "${SSH_OPTS[@]}" "$MULTI_DIR/commands/fetch" "$MULTI_DIR/tools/repeat.sh" "ubuntu@$ALICE_PUB:"
+echo "[alice] ~/fetch, ~/repeat.sh installed"
 
 echo
 echo "Done. Attach to a ph session to watch its output (Ctrl-b d to detach):"
 echo "  ssh -i $KEY -t ubuntu@$NODE_PUB  tmux attach -t node"
 echo "  ssh -i $KEY -t ubuntu@$WEB_PUB   tmux attach -t adapter"
-echo "  ssh -i $KEY -t ubuntu@$ADMIN_PUB tmux attach -t adapter"
+echo "  ssh -i $KEY -t ubuntu@$ALICE_PUB tmux attach -t adapter"
 echo "Logs also tee'd to ~/zpr/<mode>.log on each host (survive the tmux session):"
 echo "  ssh -i $KEY ubuntu@$NODE_PUB  'tail -f ~/zpr/node.log'"
 echo "  ssh -i $KEY ubuntu@$WEB_PUB   'tail -f ~/zpr/adapter.log'"
-echo "  ssh -i $KEY ubuntu@$ADMIN_PUB 'tail -f ~/zpr/adapter.log'"
+echo "  ssh -i $KEY ubuntu@$ALICE_PUB 'tail -f ~/zpr/adapter.log'"
 echo
-echo "Admin host — ssh in and curl through ZPR:"
-echo "  ssh -i $KEY ubuntu@$ADMIN_PUB"
+echo "Alice host — ssh in and curl through ZPR:"
+echo "  ssh -i $KEY ubuntu@$ALICE_PUB"

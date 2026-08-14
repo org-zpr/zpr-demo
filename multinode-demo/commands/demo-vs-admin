@@ -10,7 +10,7 @@
 # host and is not mounted into vs, so it goes in via -e VS_API_KEY.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-KEYFILE="$MULTI_DIR/local-compute/client/client.key"
+KEYFILE="$MULTI_DIR/local-compute/bob/client.key"
 [ -f "$KEYFILE" ] || {
   echo "error: no vsapi key at $KEYFILE — run local-compute/deploy-docker.sh first" >&2
   exit 1

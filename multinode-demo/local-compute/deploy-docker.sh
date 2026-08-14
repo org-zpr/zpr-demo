@@ -23,7 +23,7 @@ OCI_DIR="$MULTI_DIR/oci-compute"
 COMPOSE=(docker compose -f "$MULTI_DIR/docker-compose.yml")
 
 CONF_ROOT="$SCRIPT_DIR/conf"        # per-container /conf mounts
-CLIENT_DIR="$SCRIPT_DIR/client"     # host-side operator client (not a container)
+BOB_DIR="$SCRIPT_DIR/bob"        # bob = host-side operator client (not a container)
 LOGS_DIR="$SCRIPT_DIR/logs"
 
 # --- Step 0: addresses ---
@@ -47,7 +47,7 @@ render() {  # $1=template path  $2=output path
 
 # --- Step 1: assemble per-container /conf dirs (rendered config + whole include/) ---
 rm -rf "$CONF_ROOT"
-mkdir -p "$CONF_ROOT"/{node1,vs,web1} "$CLIENT_DIR" "$LOGS_DIR"
+mkdir -p "$CONF_ROOT"/{node1,vs,web1} "$BOB_DIR" "$LOGS_DIR"
 for c in node1 vs web1; do cp -r "$INC_DIR" "$CONF_ROOT/$c/include"; done  # ponytail: whole include/, small key files
 
 cp "$CONF_TMPL/node1-conf.toml"        "$CONF_ROOT/node1/node1-conf.toml"    # no sentinel
@@ -57,14 +57,14 @@ cp "$SCRIPT_DIR/vs.toml" "$CONF_ROOT/vs/vs.toml"
 cp "$ADMIN/attrfile.json" "$CONF_ROOT/vs/attrfile.json"   # policy attributes, read by vs
 cp "$CONF_TMPL/zpr-dashboard-config.toml" "$CONF_ROOT/vs/config.toml"  # zpr-dashboard reads ./config.toml
 
-# host-side operator client (stays on host, next to client.key)
-render "$CONF_TMPL/adapter-client-conf.toml.template" "$CLIENT_DIR/adapter-client-conf.toml"
-ln -sfn "$INC_DIR" "$CLIENT_DIR/include"
+# bob, the host-side operator client (stays on host, next to client.key)
+render "$CONF_TMPL/adapter-bob-conf.toml.template" "$BOB_DIR/adapter-bob-conf.toml"
+ln -sfn "$INC_DIR" "$BOB_DIR/include"
 
 # --- Step 2 (§7.3): vs_keys.toml + client.key ---
 rm -f "$CONF_ROOT/vs/vs_keys.toml"
-"$BIN_DIR/vsapikey" create --init readwrite client "$CONF_ROOT/vs/vs_keys.toml" > "$CLIENT_DIR/client.key"
-echo "client key written to $CLIENT_DIR/client.key"
+"$BIN_DIR/vsapikey" create --init readwrite client "$CONF_ROOT/vs/vs_keys.toml" > "$BOB_DIR/client.key"
+echo "client key written to $BOB_DIR/client.key"
 
 # --- Step 3: compile policy on host (needs ../include keys the .zplc references) ---
 render "$ADMIN/multinode-demo.zplc.template" "$ADMIN/multinode-demo.zplc"
@@ -102,6 +102,6 @@ cat <<EOF
 Done. Local ZPR env is up.
   Logs:   tail -f $LOGS_DIR/*.log
   Attach: docker exec -it <node1|vs|web1> tmux attach -t <session>   (Ctrl-b d to detach)
-  Client: adapter config + key on host at $CLIENT_DIR/
+  bob:    adapter config + key on host at $BOB_DIR/
   Teardown: ${COMPOSE[*]} down
 EOF

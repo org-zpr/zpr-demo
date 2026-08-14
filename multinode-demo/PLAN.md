@@ -196,7 +196,7 @@ node1 address, and one token means different things in different files. The
 | sentinel / field | meaning | value source |
 |---|---|---|
 | `@@NODE1_ADDR@@` (`adapter-vs`, `adapter-web1`) | node1's **docker-internal** IP — in-network clients reach node1 directly | the compose static IP for `node1` |
-| `@@NODE1_EXT_ADDR@@` (`adapter-client`, policy `.zplc` n1 substrate) | node1 as reached **from outside docker** = host IP + published 5000 | `deploy-docker.sh` param; default `127.0.0.1` for a same-host operator, override for cross-host |
+| `@@NODE1_EXT_ADDR@@` (`adapter-bob`, policy `.zplc` n1 substrate) | node1 as reached **from outside docker** = host IP + published 5000 | `deploy-docker.sh` param; default `127.0.0.1` for a same-host operator, override for cross-host |
 | `@@NODE0_PUBLIC_ADDR@@` (policy `.zplc` n0 substrate) | **OCI node0's PUBLIC IP** so on-prem can reach it across the internet | `tofu -chdir=../oci-compute output -json public_ips \| jq -r .node` |
 
 Note the policy's `@@NODE0_PUBLIC_ADDR@@` is deliberately a distinct token from
@@ -205,7 +205,7 @@ substituted by `deploy-zpr.sh`) — same host, different addresses, so they must
 never collide. This does mean the docker deploy has a cross-directory dependency
 on the OCI tofu state (`../oci-compute`) to get node0's public IP.
 
-**Host-side client.** `adapter-client-conf.toml.template` is *not* a container —
+**Host-side client (`bob`).** `adapter-bob-conf.toml.template` is *not* a container —
 it is the operator's own client (browser/curl side), run on the host OS to reach
 the ZPR web services. `deploy-docker.sh` renders it (using `@@NODE1_EXT_ADDR@@`)
 and leaves it on the host alongside `client.key`.

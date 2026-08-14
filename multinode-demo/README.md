@@ -27,6 +27,7 @@ forms are kept below on purpose: they're the reference when a command misbehaves
 | `demo-vs-admin-gui` | alias for `demo-vs-admin gui` |
 | `demo-zpr-dashboard` | the `zpr-dashboard` TUI — richer than `demo-vs-admin gui` |
 | `demo-attr <set\|add\|rm\|del\|show\|push\|save\|selftest>` | edit the attribute file + flush the vs cache |
+| `fetch <URL> [curl-args…]` | `curl` under a green SUCCESS / red FAILED banner. Also on `alice` as `~/fetch` |
 
 `<NAME>` is one of:
 
@@ -34,7 +35,7 @@ forms are kept below on purpose: they're the reference when a command misbehaves
 |---|---|---|
 | `node0` | substrate node | OCI `node` |
 | `ociweb` | web adapter | OCI `webserver` |
-| `admin` | admin user's adapter (runs as root) | OCI `admin` |
+| `alice` | alice's adapter (runs as root) | OCI `alice` |
 | `node1` | substrate node | docker `node1` |
 | `vs` | the visa service's **adapter** | docker `vs` |
 | `premweb` | web adapter | docker `web1` |
@@ -42,12 +43,17 @@ forms are kept below on purpose: they're the reference when a command misbehaves
 OCI addresses come from `tofu output` at call time — nothing to regenerate after a
 `tofu apply`. Override the SSH key with `SSH_KEY=/path`.
 
-`demo-attr` is the one with a self-check: `commands/demo-attr selftest` exercises its
-jq transforms offline, no infra needed.
+Two have a self-check, both offline and needing no infra: `commands/demo-attr selftest`
+exercises its jq transforms, and `commands/fetch --selftest` exercises both banners.
+
+`fetch` is the odd one out — no `demo-` prefix, and no `<NAME>`: it takes a URL, and
+`deploy-zpr.sh` scp's the same script to `alice`, where `./fetch http://premweb.demo`
+is how a policy allow or deny is shown. HTTP 4xx/5xx count as failures; set
+`FETCH_TIMEOUT` (default 10s) to bound a denied fetch that would otherwise hang.
 
 **Attributes are tags, not values.** The `.zplc` maps each attribute to a tag
 (`prem_user -> #user.prem_user`), so the mere *presence* of the key sets it —
-`demo-attr set admin.demo prem_user no` **grants** `prem_user`. `demo-attr del` is the
+`demo-attr set alice prem_user no` **grants** `prem_user`. `demo-attr del` is the
 only way to revoke.
 
 ## How to install (OCI hosts)
@@ -59,7 +65,7 @@ each other by private IP:
 |-------------|---------------------------------------------|-------------------------|
 | `node`      | ZPR substrate node (node0), 5000 tcp+udp    | `fd5a:5052:90de::10`    |
 | `webserver` | nginx + landing page (`oci-compute/web/`)   | `fd5a:5052:8888::8`     |
-| `admin`     | "admin user" workstation, runs an adapter   | none — dynamic ZPR addr |
+| `alice`     | "alice user" workstation, runs an adapter   | none — dynamic ZPR addr |
 
 No ZPR components yet at this stage.
 
@@ -85,19 +91,30 @@ ssh -i ~/.ssh/zpr-demo ubuntu@<public_ip>
 **Verify (per host):**
 
 ```bash
-ip addr show tun9                       # role's fd5a:... address, state UP (not on admin)
+ip addr show tun9                       # role's fd5a:... address, state UP (not on alice)
 ping <other-host-private-ip>            # inter-host IP works
-curl http://<webserver_public_ip>/      # "hello from OCI"
+curl http://<webserver_public_ip>/      # "Hello from OCIWEB" banner + current time
 ```
 
-**Re-push the webserver index:** cloud-init only runs at first boot, so editing
-`oci-compute/web/index.html` and re-applying does NOT repaint a live host. Either:
+**The banner pages are live.** Both web servers run `tools/regen-banner.sh`
+continuously, rewriting `/var/www/html/index.html` every 0.2s — so a fetch proves
+it reached that host at that moment. On OCI it's `zpr-banner.service` (installed
+by cloud-init); in docker it's backgrounded by `local-compute/entrypoint-web1.sh`.
+`oci-compute/web/index.html` is now only the boot-time placeholder shown until
+the service starts.
+
+To change the banner, edit `tools/regen-banner.sh`, then:
 
 ```bash
-scp oci-compute/web/index.html ubuntu@<web_ip>:/tmp/ && \
-  ssh ubuntu@<web_ip> 'sudo mv /tmp/index.html /var/www/html/'
+# OCI — cloud-init only runs at first boot, so push the script yourself:
+scp tools/regen-banner.sh ubuntu@<web_ip>:/tmp/ && \
+  ssh ubuntu@<web_ip> 'sudo install -m755 /tmp/regen-banner.sh /usr/local/sbin/ \
+    && sudo systemctl restart zpr-banner'
 # or rebuild just that host:
 tofu apply -replace='oci_core_instance.host["webserver"]'
+
+# docker — tools/ is bind-mounted, so no image rebuild needed:
+docker compose restart web1
 ```
 
 **Tear down:** `tofu destroy`.
@@ -122,7 +139,7 @@ first). Re-run after any `tofu apply` that recreated the `node` (its private IP
 is what gets injected). Override the SSH key with `SSH_KEY=/path ./deploy-zpr.sh`.
 
 It also writes `premweb.demo` (`fd5a:5052:8888::9`) and `ociweb.demo`
-(`fd5a:5052:8888::8`) into the **admin** host's `/etc/hosts`, so
+(`fd5a:5052:8888::8`) into the **alice** host's `/etc/hosts`, so
 `curl http://ociweb.demo/` works from there once the demo is up.
 
 **Watch a `ph` process** (session name = mode: `node` or `adapter`; Ctrl-b d to
@@ -131,7 +148,7 @@ detach):
 ```bash
 ssh -i ~/.ssh/zpr-demo -t ubuntu@<node_public_ip>  tmux attach -t node
 ssh -i ~/.ssh/zpr-demo -t ubuntu@<web_public_ip>   tmux attach -t adapter
-ssh -i ~/.ssh/zpr-demo -t ubuntu@<admin_public_ip> tmux attach -t adapter
+ssh -i ~/.ssh/zpr-demo -t ubuntu@<alice_public_ip> tmux attach -t adapter
 ```
 
 **Check state without attaching:**
@@ -172,26 +189,26 @@ intended sequence, once the node link works:
 3. **Wait for `node1` to connect to `node0`.** ⚠️ Unimplemented: we don't yet
    know what that connection looks like from node0's side, so there's nothing
    to poll for. `deploy-zpr.sh` currently barrels straight past this point.
-4. **Then** the `web0` adapter, **then** the `admin` adapter — the order
+4. **Then** the `web0` adapter, **then** the `alice` adapter — the order
    `deploy-zpr.sh` already uses.
 
 So only step 3 is missing. When the node link lands, add the wait there (see the
 marker in `oci-compute/deploy-zpr.sh`) and the rest of the sequence is in place.
 
-### The `admin` host
+### The `alice` host
 
-The hypothetical admin user's workstation (CN `admin.demo`). Its adapter config
-[`adapter-admin-conf.toml.template`](zpr-conf/confs/adapter-admin-conf.toml.template)
+The hypothetical user alice's workstation (CN `alice`). Its adapter config
+[`adapter-alice-conf.toml.template`](zpr-conf/confs/adapter-alice-conf.toml.template)
 sets **no** `zpr_addr`/`tun_if` — the address is assigned dynamically by the
 visa service, so `ph` creates its own TUN device and therefore runs under
-`sudo`. Everything else matches the other hosts: `~/zpr/{ph,adapter-admin-conf.toml,include/}`,
+`sudo`. Everything else matches the other hosts: `~/zpr/{ph,adapter-alice-conf.toml,include/}`,
 tmux session `adapter`, log tee'd to `~/zpr/adapter.log`.
 
 **SSH in and curl through ZPR** — needs the adapter running *and* a reachable
 visa service, so this does not work yet (see **Current limitation** below):
 
 ```bash
-ssh -i ~/.ssh/zpr-demo ubuntu@$(tofu -chdir=oci-compute output -json public_ips | jq -r .admin)
+ssh -i ~/.ssh/zpr-demo ubuntu@$(tofu -chdir=oci-compute output -json public_ips | jq -r .alice)
 
 curl -v http://[fd5a:5052:8888::8]/     # OciWeb  (webserver in OCI)
 curl -v http://[fd5a:5052:8888::9]/     # PremWeb (web1 in the local docker env)
@@ -201,15 +218,15 @@ Those are the `zpr.addr`s the policy declares for the two services — see
 `zpr-conf/admin/multinode-demo.zplc.template`. A curl that hangs or is refused
 usually means "no visa", not "no route": check the adapter's output.
 
-Per `zpr-conf/admin/attrfile.json`, `admin.demo` holds `oci_user` but **not**
+Per `zpr-conf/admin/attrfile.json`, `alice` holds `oci_user` but **not**
 `prem_user` — so the `OciWeb` curl should succeed and the `PremWeb` one should be
 denied. Flip that live by editing the mounted copy and flushing the `attrfile`
 service (see the local-docker section below).
 
-**Monitor the admin adapter:**
+**Monitor alice's adapter:**
 
 ```bash
-A=$(tofu -chdir=oci-compute output -json public_ips | jq -r .admin)
+A=$(tofu -chdir=oci-compute output -json public_ips | jq -r .alice)
 
 ssh -i ~/.ssh/zpr-demo -t ubuntu@$A tmux attach -t adapter   # live, Ctrl-b d to detach
 ssh -i ~/.ssh/zpr-demo ubuntu@$A 'tail -f ~/zpr/adapter.log' # follow the log
@@ -272,21 +289,21 @@ adapters connect, authenticate, and their `dock link` becomes `ACTIVE` (past
 `Helloing`). `cert failed signature verification` / `unverified name` warnings
 are benign (default trusted service, cert checking disabled in this demo policy).
 
-**Operator client:** `deploy-docker.sh` renders the host-side client adapter and
-generates its key at `local-compute/client/` (`adapter-client-conf.toml` +
-`client.key`) — run `sudo bin/ph adapter -c adapter-client-conf.toml` from there
+**Operator client (`bob`):** `deploy-docker.sh` renders the host-side client adapter and
+generates its key at `local-compute/bob/` (`adapter-bob-conf.toml` +
+`client.key`) — run `sudo bin/ph adapter -c adapter-bob-conf.toml` from there
 to reach the ZPR web services.
 
 **Administer the visa service (`vs-admin` GUI):** the vsapi access key that
 `vs-admin` needs is the same `client.key` generated each deploy at
-`local-compute/client/client.key` (host side). `vs-admin` is baked into the image,
+`local-compute/bob/client.key` (host side). `vs-admin` is baked into the image,
 so launch it from a terminal attached to the `vs` container, passing the key via
 `VS_API_KEY` (no need to copy the file in). The admin API listens on the vs ZPR
 address `[fd5a:5052::1]:8182` and presents a self-signed TLS cert, so `--ca-cert`
 points at that same cert:
 
 ```bash
-docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
+docker exec -e VS_API_KEY="$(cat local-compute/bob/client.key)" -it vs \
   /app/bin/vs-admin \
     --svc-url "https://[fd5a:5052::1]:8182" \
     --ca-cert /conf/include/admin-tls-cert.pem \
@@ -314,7 +331,7 @@ and tell the visa service to reload it:
 ```bash
 $EDITOR local-compute/conf/vs/attrfile.json          # live copy, no restart needed
 
-docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
+docker exec -e VS_API_KEY="$(cat local-compute/bob/client.key)" -it vs \
   /app/bin/vs-admin \
     --svc-url "https://[fd5a:5052::1]:8182" \
     --ca-cert /conf/include/admin-tls-cert.pem \
@@ -329,7 +346,7 @@ docker exec -e VS_API_KEY="$(cat local-compute/client/client.key)" -it vs \
 
 ```bash
 commands/demo-attr show                        # the live file
-commands/demo-attr del admin.demo oci_user     # edit + flush
+commands/demo-attr del alice oci_user     # edit + flush
 commands/demo-attr save                        # keep it across the next deploy
 commands/demo-attr push                        # or throw it away, back to the baseline
 ```

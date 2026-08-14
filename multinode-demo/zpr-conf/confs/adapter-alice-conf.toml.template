@@ -2,7 +2,7 @@
 ca_file = "include/auth-ca.crt"
 
 [adapter]
-name = "admin.demo"
+name = "alice"
 node_addr = "@@NODE0_ADDR@@:5000"
 node_public_key_file = "include/node0-noise-pub.pem"
-bootstrap_key = "include/admin-private-key.pem"
+bootstrap_key = "include/alice-private-key.pem"

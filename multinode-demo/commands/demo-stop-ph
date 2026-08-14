@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stop one or more ph processes, leaving the host/container up.
-#   ./demo-stop-ph <NAME>...          e.g. ./demo-stop-ph node0 ociweb admin
+#   ./demo-stop-ph <NAME>...          e.g. ./demo-stop-ph node0 ociweb alice
 # Restart with demo-restart-ph. Already-stopped names are a no-op.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 

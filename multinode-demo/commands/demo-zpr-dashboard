@@ -8,7 +8,7 @@
 # API key goes in via -e like demo-vs-admin does: env beats the config file.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-KEYFILE="$MULTI_DIR/local-compute/client/client.key"
+KEYFILE="$MULTI_DIR/local-compute/bob/client.key"
 [ -f "$KEYFILE" ] || {
   echo "error: no vsapi key at $KEYFILE — run local-compute/deploy-docker.sh first" >&2
   exit 1

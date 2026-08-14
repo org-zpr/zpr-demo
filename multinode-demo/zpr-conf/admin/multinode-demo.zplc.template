@@ -34,8 +34,8 @@ expiration_seconds = 3600
 "vs.zpr" = "../include/vs-public-key.pem"
 "ociweb.demo" = "../include/web0-public-key.pem"
 "premweb.demo" = "../include/web1-public-key.pem"
-"user.demo" = "../include/client-public-key.pem"
-"admin.demo" = "../include/admin-public-key.pem"
+"bob" = "../include/bob-public-key.pem"
+"alice" = "../include/alice-public-key.pem"
 
 
 [protocols.http]

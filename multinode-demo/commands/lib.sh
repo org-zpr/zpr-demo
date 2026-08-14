@@ -27,24 +27,24 @@ SSH_OPTS=(-i "$KEY" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10)
 # LAUNCH  : the command the deploy script used, replayed by demo-restart-ph
 # WD      : cwd for the tmux session
 # SUDO    : "sudo " prefix, or empty
-NAMES=(node0 ociweb admin node1 vs premweb)
+NAMES=(node0 ociweb alice node1 vs premweb)
 
 declare -A KIND=(
-  [node0]=oci   [ociweb]=oci      [admin]=oci
+  [node0]=oci   [ociweb]=oci      [alice]=oci
   [node1]=docker [vs]=docker      [premweb]=docker
 )
 declare -A TARGET=(
-  [node0]=node  [ociweb]=webserver [admin]=admin
+  [node0]=node  [ociweb]=webserver [alice]=alice
   [node1]=node1 [vs]=vs            [premweb]=web1
 )
 declare -A SESSION=(
-  [node0]=node  [ociweb]=adapter   [admin]=adapter
+  [node0]=node  [ociweb]=adapter   [alice]=adapter
   [node1]=node1 [vs]=vs-adapter    [premweb]=web1-adapter
 )
 declare -A LOG=(
   [node0]='$HOME/zpr/node.log'
   [ociweb]='$HOME/zpr/adapter.log'
-  [admin]='$HOME/zpr/adapter.log'
+  [alice]='$HOME/zpr/adapter.log'
   [node1]="$LOGS_DIR/node1.log"
   [vs]="$LOGS_DIR/vs-adapter.log"
   [premweb]="$LOGS_DIR/web1-adapter.log"
@@ -52,17 +52,17 @@ declare -A LOG=(
 declare -A LAUNCH=(
   [node0]='./ph node -c ~/zpr/node0-conf.toml'
   [ociweb]='./ph adapter -c ~/zpr/adapter-web0-conf.toml'
-  [admin]='sudo ./ph adapter -c ~/zpr/adapter-admin-conf.toml'
+  [alice]='sudo ./ph adapter -c ~/zpr/adapter-alice-conf.toml'
   [node1]='/app/bin/ph node -c node1-conf.toml'
   [vs]='/app/bin/ph adapter -c adapter-vs-conf.toml'
   [premweb]='/app/bin/ph adapter -c adapter-web1-conf.toml'
 )
 declare -A WD=(
-  [node0]='$HOME/zpr' [ociweb]='$HOME/zpr' [admin]='$HOME/zpr'
+  [node0]='$HOME/zpr' [ociweb]='$HOME/zpr' [alice]='$HOME/zpr'
   [node1]=/conf       [vs]=/conf           [premweb]=/conf
 )
-# admin's ph runs as root (no zpr_addr in its conf => ph makes its own TUN).
-declare -A SUDO=([node0]='' [ociweb]='' [admin]='sudo ' [node1]='' [vs]='' [premweb]='')
+# alice's ph runs as root (no zpr_addr in its conf => ph makes its own TUN).
+declare -A SUDO=([node0]='' [ociweb]='' [alice]='sudo ' [node1]='' [vs]='' [premweb]='')
 
 # resolve NAME -- sets N_* for the caller, or lists the valid names and exits 2.
 resolve() {

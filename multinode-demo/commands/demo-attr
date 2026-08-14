@@ -42,7 +42,7 @@ canon() { jq -S -c .; }   # canonical form: the file is hand-formatted, so a byt
 # --- selftest: the transforms against this demo's actors, offline ---
 selftest() {
   local base s1 s2 s3 s4 ok=0
-  base='{"user.demo":{"prem_user":["yes"],"oci_user":["yes"]},"admin.demo" : {"oci_user":["yes"]}}'
+  base='{"bob":{"prem_user":["yes"],"oci_user":["yes"]},"alice" : {"oci_user":["yes"]}}'
   chk() { # <label> <got> <want>
     local g w
     g=$(canon <<<"$2"); w=$(canon <<<"$3")
@@ -50,40 +50,40 @@ selftest() {
     echo "ok  $1"
   }
 
-  s1=$(jq_set user.demo oci_user yes <<<"$base")
+  s1=$(jq_set bob oci_user yes <<<"$base")
   chk "set to the value already there changes nothing" "$s1" "$base"
 
-  s2=$(jq_del user.demo oci_user <<<"$s1")
+  s2=$(jq_del bob oci_user <<<"$s1")
   chk "del drops the attr, leaves the actor entry" "$s2" \
-    '{"user.demo":{"prem_user":["yes"]},"admin.demo":{"oci_user":["yes"]}}'
+    '{"bob":{"prem_user":["yes"]},"alice":{"oci_user":["yes"]}}'
 
-  s3=$(jq_set user.demo oci_user no <<<"$s2")
+  s3=$(jq_set bob oci_user no <<<"$s2")
   chk "set re-adds a missing attr" "$s3" \
-    '{"user.demo":{"prem_user":["yes"],"oci_user":["no"]},"admin.demo":{"oci_user":["yes"]}}'
+    '{"bob":{"prem_user":["yes"],"oci_user":["no"]},"alice":{"oci_user":["yes"]}}'
 
-  s4=$(jq_set user.demo oci_user yes <<<"$s3")
+  s4=$(jq_set bob oci_user yes <<<"$s3")
   chk "set replaces an existing value" "$s4" "$base"
 
-  chk "del of an absent attr is a no-op" "$(jq_del admin.demo Nope <<<"$base")" "$base"
+  chk "del of an absent attr is a no-op" "$(jq_del alice Nope <<<"$base")" "$base"
 
-  s1=$(jq_del admin.demo oci_user <<<"$base")
+  s1=$(jq_del alice oci_user <<<"$base")
   chk "del can empty an actor entry" "$s1" \
-    '{"user.demo":{"prem_user":["yes"],"oci_user":["yes"]},"admin.demo":{}}'
+    '{"bob":{"prem_user":["yes"],"oci_user":["yes"]},"alice":{}}'
 
-  s1=$(jq_add user.demo role dev <<<"$base")
+  s1=$(jq_add bob role dev <<<"$base")
   chk "add creates a missing attr" "$s1" \
-    '{"user.demo":{"prem_user":["yes"],"oci_user":["yes"],"role":["dev"]},"admin.demo":{"oci_user":["yes"]}}'
+    '{"bob":{"prem_user":["yes"],"oci_user":["yes"],"role":["dev"]},"alice":{"oci_user":["yes"]}}'
 
-  s2=$(jq_add user.demo role admin <<<"$s1")
+  s2=$(jq_add bob role admin <<<"$s1")
   chk "add appends to an existing attr" "$s2" \
-    '{"user.demo":{"prem_user":["yes"],"oci_user":["yes"],"role":["dev","admin"]},"admin.demo":{"oci_user":["yes"]}}'
+    '{"bob":{"prem_user":["yes"],"oci_user":["yes"],"role":["dev","admin"]},"alice":{"oci_user":["yes"]}}'
 
-  chk "add of a value already there changes nothing" "$(jq_add user.demo role dev <<<"$s2")" "$s2"
+  chk "add of a value already there changes nothing" "$(jq_add bob role dev <<<"$s2")" "$s2"
 
-  chk "rm drops one value, keeps the rest" "$(jq_rm user.demo role admin <<<"$s2")" "$s1"
-  chk "rm of the last value drops the attr" "$(jq_rm user.demo role dev <<<"$s1")" "$base"
-  chk "rm of an absent value is a no-op" "$(jq_rm user.demo role nope <<<"$s1")" "$s1"
-  chk "rm on an absent attr is a no-op" "$(jq_rm user.demo Nope x <<<"$base")" "$base"
+  chk "rm drops one value, keeps the rest" "$(jq_rm bob role admin <<<"$s2")" "$s1"
+  chk "rm of the last value drops the attr" "$(jq_rm bob role dev <<<"$s1")" "$base"
+  chk "rm of an absent value is a no-op" "$(jq_rm bob role nope <<<"$s1")" "$s1"
+  chk "rm on an absent attr is a no-op" "$(jq_rm bob Nope x <<<"$base")" "$base"
   return $ok
 }
 

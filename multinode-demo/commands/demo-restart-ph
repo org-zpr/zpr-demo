@@ -10,7 +10,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 resolve "${1:-}"
 
-# pkill BEFORE kill-session: admin's ph is root, so tmux running as ubuntu can't
+# pkill BEFORE kill-session: alice's ph is root, so tmux running as ubuntu can't
 # signal it and the old one would survive the restart (deploy-zpr.sh:73-77).
 # Match the process name (-x ph), not the cmdline: -f would also match this very
 # command string and kill our own shell.

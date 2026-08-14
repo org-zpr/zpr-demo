@@ -16,6 +16,8 @@ Sub plans are in `work/` directory - in order of completion:
 7. `work/scripts-plan.md` + `work/scripts-steps.md` (operator commands in `commands/`) - DONE
 8. `work/use-zpr-dashboard-plan.md` (`zpr-dashboard` TUI + `commands/demo-zpr-dashboard`) - DONE
 9. `work/hosts-files.md` (admin host `/etc/hosts` for `premweb.demo` / `ociweb.demo`) - DONE
+10. `work/fetcher.md` - DONE
+11. `work/regen-banner.md` - DONE
 
 
 

@@ -15,10 +15,10 @@ host: "web 0"
 - zpr addr: `fd5a:5052:8888::8`
 - CN: `ociweb.demo`
 
-host: "admin"
+host: "alice"  # previously called "admin"
 - lives: OCI
 - zpr addr: dynamic
-- CN: `admin.demo`
+- CN: `alice`  # previously called "admin.demo"
 
 host: "vs"
 - lives: local
@@ -35,8 +35,8 @@ host: "web 1"
 - zpr addr: `fd5a:5052:8888::9`
 - CN: `premweb.demo`
 
-host: "client"
+host: "bob"   # previously "client"
 - lives: local
 - zpr addr: dynamic
-- CN: `user.demo`
+- CN: `bob`   # previously "client.demo"
 

@@ -1,9 +1,11 @@
 FROM ubuntu:24.04
 
-# ZPR runtime deps + tmux (log sessions) + nginx (web1) + tun tooling.
+# ZPR runtime deps + tmux (log sessions) + nginx/figlet (web1's live banner page)
+# + tun tooling.
 RUN apt-get update && apt-get install -y \
     tmux \
     nginx \
+    figlet \
     iproute2 \
     ca-certificates \
     libpcap-dev \

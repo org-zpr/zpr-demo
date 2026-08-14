@@ -46,10 +46,11 @@ services:
       - ./local-compute/entrypoint-web1.sh:/entrypoint.sh:ro
       - ./local-compute/conf/web1:/conf
       - ./local-compute/logs:/logs
-      # Mount the directory, not the file: a single-file bind mount pins the
-      # inode, so an editor's rename-on-save leaves the container serving the
-      # old content forever.
-      - ./local-compute/web1-www:/var/www/html:ro
+      # The docroot is container-local: entrypoint-web1.sh runs regen-banner.sh
+      # into it continuously, and a bind mount would churn a repo file 5x/sec.
+      # tools/ is mounted (not baked in) so the banner script stays editable
+      # without an image rebuild.
+      - ./tools:/tools:ro
     networks:
       zpr-local:
         ipv4_address: 172.30.0.12

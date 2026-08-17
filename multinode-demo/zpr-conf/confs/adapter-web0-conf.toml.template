@@ -1,0 +1,13 @@
+[global]
+ca_file = "include/auth-ca.crt"
+zpr_addr = [ "fd5a:5052:8888::8" ] # visa service well known addr
+tun_if = "tun9"
+
+[adapter]
+name = "ociweb.demo"
+# This is private addr of node0 in OCI (port 5000).
+# See `tofu output`.
+node_addr = "@@NODE0_ADDR@@:5000"
+node_public_key_file = "include/node0-noise-pub.pem"
+bootstrap_key = "include/web0-private-key.pem"
+

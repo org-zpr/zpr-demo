@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Relaunch NAME's ph, using the config the deploy already placed on the target.
+#   ./demo-restart-ph <NAME>
+#
+# ponytail: this replays ~6 lines of oci-compute/deploy-zpr.sh:start_ph() and
+# local-compute/deploy-docker.sh:launch(). Deliberate duplication — factoring a
+# shared launcher out of two working, differently-shaped deploy scripts costs
+# more than it saves. If the launch commands drift, those are the two call sites.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+resolve "${1:-}"
+
+# pkill BEFORE kill-session: alice's ph is root, so tmux running as ubuntu can't
+# signal it and the old one would survive the restart (deploy-zpr.sh:73-77).
+# Match the process name (-x ph), not the cmdline: -f would also match this very
+# command string and kill our own shell.
+echo "[$N_NAME] restarting ph (session '$N_SESSION')"
+on "$N_NAME" "${N_SUDO}pkill -x ph 2>/dev/null || true; \
+  tmux kill-session -t $N_SESSION 2>/dev/null || true; \
+  tmux new-session -d -s $N_SESSION -c $N_WD '$N_LAUNCH 2>&1 | tee $N_TLOG'; \
+  sleep 1; tmux has-session -t $N_SESSION 2>/dev/null" \
+  || { echo "ERROR: ph exited immediately on $N_NAME — see: demo-watch-ph $N_NAME" >&2; exit 1; }
+
+echo "[$N_NAME] ph running"

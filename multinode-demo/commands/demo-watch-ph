@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Follow NAME's ph output.
+#   ./demo-watch-ph <NAME>       tail -f the log  (read-only; Ctrl-C is harmless)
+#   ./demo-watch-ph -a <NAME>    attach to the tmux session instead (Ctrl-b d to detach)
+#
+# Tailing is the default on purpose: both deploys tee every ph to a file, and a
+# reflexive Ctrl-C in an attached pane would kill the demo's ph.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+attach=""
+[ "${1:-}" = "-a" ] && { attach=1; shift; }
+
+resolve "${1:-}"
+if [ -n "$attach" ]; then
+  on_tty "$N_NAME" "tmux attach -t $N_SESSION"
+else
+  tail_log "$N_NAME" -f
+fi

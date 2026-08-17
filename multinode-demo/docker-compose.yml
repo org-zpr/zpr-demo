@@ -1,0 +1,63 @@
+# Local "on-prem" ZPR env: node1 + vs + web1, one image, static IPs.
+# Bring up via local-compute/deploy-docker.sh (it renders configs into
+# local-compute/conf/<name>/ first, then `docker compose up -d`).
+services:
+  node1:
+    image: zpr-multinode
+    container_name: node1
+    command: ["/entrypoint.sh"]
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun"]
+    privileged: true
+    volumes:
+      - ./local-compute/entrypoint-node1.sh:/entrypoint.sh:ro
+      - ./local-compute/conf/node1:/conf
+      - ./local-compute/logs:/logs
+    networks:
+      zpr-local:
+        ipv4_address: 172.30.0.10
+    ports:
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+
+  vs:
+    image: zpr-multinode
+    container_name: vs
+    command: ["/entrypoint.sh"]
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun"]
+    privileged: true
+    volumes:
+      - ./local-compute/entrypoint-vs.sh:/entrypoint.sh:ro
+      - ./local-compute/conf/vs:/conf
+      - ./local-compute/logs:/logs
+    networks:
+      zpr-local:
+        ipv4_address: 172.30.0.11
+
+  web1:
+    image: zpr-multinode
+    container_name: web1
+    command: ["/entrypoint.sh"]
+    cap_add: [NET_ADMIN]
+    devices: ["/dev/net/tun"]
+    privileged: true
+    volumes:
+      - ./local-compute/entrypoint-web1.sh:/entrypoint.sh:ro
+      - ./local-compute/conf/web1:/conf
+      - ./local-compute/logs:/logs
+      # The docroot is container-local: entrypoint-web1.sh runs regen-banner.sh
+      # into it continuously, and a bind mount would churn a repo file 5x/sec.
+      # tools/ is mounted (not baked in) so the banner script stays editable
+      # without an image rebuild.
+      - ./tools:/tools:ro
+    networks:
+      zpr-local:
+        ipv4_address: 172.30.0.12
+
+networks:
+  zpr-local:
+    name: zpr-local
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

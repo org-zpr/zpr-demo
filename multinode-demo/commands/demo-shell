@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Interactive shell on NAME's host/container, landing in its ZPR working dir.
+#   ./demo-shell <NAME>
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+resolve "${1:-}"
+exec_in="cd $N_WD && exec bash -l"      # $HOME in N_WD expands on the far side
+on_tty "$N_NAME" "$exec_in"

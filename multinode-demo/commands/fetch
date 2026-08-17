@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# curl with a green/red banner on top, so an allow and a deny are told apart
+# across a room. Runs here and on the alice OCI host, where deploy-zpr.sh puts it.
+#   ./fetch http://premweb.demo          # args after the URL go to curl
+#   ./fetch http://ociweb.demo -I     # URL first, then curl flags
+#   ./fetch --selftest
+# FETCH_TIMEOUT=<secs> caps the wait (default 2): a ZPR-denied fetch just hangs.
+# FETCH_COLOR=always forces banner colors when stdout is captured (for example,
+# by `watch -c`); `never` disables them, and the default `auto` checks for a TTY.
+#
+# Standalone on purpose — no lib.sh — so one scp gives alice a working copy.
+set -uo pipefail
+
+# -f so an HTTP 4xx/5xx is a FAILED banner too, not a green one over an error page.
+fetch() {  # $1=url $2...=extra curl args
+  local url="$1" color="${FETCH_COLOR:-auto}"; shift
+  local out rc ts g r z
+  case "$color" in
+    always) g=$'\e[1;42;30m'; r=$'\e[1;41;97m'; z=$'\e[0m' ;;
+    never)  g=; r=; z= ;;
+    auto)
+      if [ -t 1 ]; then g=$'\e[1;42;30m'; r=$'\e[1;41;97m'; z=$'\e[0m'
+      else g=; r=; z=
+      fi
+      ;;
+    *) printf 'fetch: invalid FETCH_COLOR value: %s (expected auto, always, or never)\n' "$color" >&2; return 2 ;;
+  esac
+  out=$(curl -fsS --max-time "${FETCH_TIMEOUT:-2}" "$@" "$url" 2>&1); rc=$?
+  ts=$(date +%H:%M:%S)
+  if [ "$rc" -eq 0 ]; then
+    printf '%s[ OK SUCCESS ]%s successful fetch of %s at %s\n' "$g" "$z" "$url" "$ts"
+  else
+    printf '%s[ ERROR FAILED ]%s failed to load %s at %s (curl exit %d)\n' \
+      "$r" "$z" "$url" "$ts" "$rc"
+  fi
+  [ -n "$out" ] && printf '%s\n' "$out"
+  return "$rc"
+}
+
+# Offline both-branches check, same idea as demo-attr's selftest. file:// needs no
+# server; port 1 refuses instantly.
+selftest() {
+  local ok bad colored
+  ok=$(fetch file:///etc/hostname); bad=$(fetch http://127.0.0.1:1)
+  colored=$(FETCH_COLOR=always fetch file:///etc/hostname)
+  case "$ok" in *'OK SUCCESS'*) ;; *) echo "selftest: file:// fetch not SUCCESS: $ok" >&2; exit 1;; esac
+  case "$bad" in *'ERROR FAILED'*) ;; *) echo "selftest: refused port not FAILED: $bad" >&2; exit 1;; esac
+  case "$colored" in *$'\e[1;42;30m[ OK SUCCESS ]\e[0m'*) ;;
+    *) echo "selftest: FETCH_COLOR=always did not color SUCCESS banner" >&2; exit 1;;
+  esac
+  echo "selftest: ok"
+}
+
+case "${1:-}" in
+  --selftest) selftest ;;
+  ''|-h|--help) echo "usage: $(basename "$0") URL [curl-args...] | --selftest" >&2; exit 2 ;;
+  *) fetch "$@" ;;
+esac

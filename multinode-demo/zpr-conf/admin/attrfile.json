@@ -1,0 +1,11 @@
+{
+  "bob": {
+    "location": ["onprem"],
+    "access": ["onprem"]
+  },
+  "alice": {
+    "location": ["cloud"],
+    "access": ["cloud"]
+  }
+}
+

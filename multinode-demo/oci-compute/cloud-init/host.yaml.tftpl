@@ -1,0 +1,92 @@
+#cloud-config
+hostname: ${hostname}
+# NB: packages are installed in runcmd (not the packages: module) so we can
+# retry apt — on first boot cloud-init races OCI's DNS/network bring-up, and a
+# single failed apt-get update leaves noble-updates unindexed (valkey-server
+# lives only there) or fails outright (unresolvable mirror).
+
+%{ if tun_addr != "" || web_index != "" || banner != "" ~}
+write_files:
+%{ endif ~}
+%{ if tun_addr != "" ~}
+  - path: /usr/local/sbin/setup-tun9.sh
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      ip link show tun9 &>/dev/null && ip link delete tun9 || true
+      ip tuntap add name tun9 mode tun multi_queue
+      ip link set tun9 mtu 1400
+      ip addr add ${tun_addr}/32 dev tun9      # /32 matches iot-demo's working config
+      ip link set tun9 up
+  - path: /etc/systemd/system/zpr-tun.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR static TUN (tun9)
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/local/sbin/setup-tun9.sh
+      [Install]
+      WantedBy=multi-user.target
+%{ endif ~}
+%{ if web_index != "" ~}
+  # jsonencode, not a `|` block: file()'d content we don't control can start with
+  # whitespace, and indent() then makes the block's first line deeper than the
+  # rest, ending the scalar early and breaking the whole user-data. YAML is a
+  # JSON superset, so a one-line quoted string is always safe.
+  - path: /var/www/html/index.html
+    permissions: "0644"
+    content: ${jsonencode(web_index)}
+%{ endif ~}
+%{ if banner != "" ~}
+  # Live banner page (work/regen-banner.md): rewrites index.html every 0.2s so a
+  # fetch proves it reached THIS host, now. Long-running, so Type=simple +
+  # Restart=always — unlike zpr-tun.service's oneshot.
+  - path: /usr/local/sbin/regen-banner.sh
+    permissions: "0755"
+    content: ${jsonencode(banner)}
+  - path: /etc/systemd/system/zpr-banner.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ZPR demo live banner page
+      After=network-online.target nginx.service
+      [Service]
+      Type=simple
+      ExecStart=/usr/local/sbin/regen-banner.sh OCIWEB /var/www/html/index.html
+      Restart=always
+      [Install]
+      WantedBy=multi-user.target
+%{ endif ~}
+
+runcmd:
+  # archive.ubuntu.com resolves to AAAA records, but the VCN has no IPv6 route:
+  # apt tries v6 first, every fetch fails, and NOTHING installs (this silently
+  # cost us nginx). Retries don't help — pin apt to v4. ponytail: drop this if
+  # the VCN ever gets real IPv6 egress.
+  - echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+  # Retry apt until DNS/mirrors are reachable — both update AND install fetch can
+  # lose the boot-time DNS race, so each gets its own retry loop.
+  - for i in $(seq 1 10); do apt-get update && break || sleep 10; done
+  - for i in $(seq 1 10); do DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent ${join(" ", packages)} && break || sleep 10; done
+  # Open host firewall for the ports the security list already allows.
+  # (OCI Ubuntu image rejects inbound except SSH; insert at top of INPUT.)
+  # Port 80 is intra-VCN only on the webserver — external HTTP is ZPR-managed.
+%{ if web_index != "" ~}
+  - iptables -I INPUT 1 -p tcp -s ${vcn_cidr} --dport 80 -j ACCEPT
+%{ endif ~}
+  - iptables -I INPUT 1 -p tcp --dport 5000 -j ACCEPT
+  - iptables -I INPUT 1 -p udp --dport 5000 -j ACCEPT
+  - netfilter-persistent save
+  - systemctl daemon-reload
+%{ if tun_addr != "" ~}
+  - systemctl enable --now zpr-tun.service
+%{ endif ~}
+%{ if banner != "" ~}
+  # After the apt loops above — the script needs figlet installed.
+  - systemctl enable --now zpr-banner.service
+%{ endif ~}

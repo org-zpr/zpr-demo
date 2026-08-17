@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Stop one or more ph processes, leaving the host/container up.
+#   ./demo-stop-ph <NAME>...          e.g. ./demo-stop-ph node0 ociweb alice
+# Restart with demo-restart-ph. Already-stopped names are a no-op.
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+[ $# -gt 0 ] || { echo "usage: demo-stop-ph <NAME>..." >&2
+                  echo "valid names: ${NAMES[*]}" >&2; exit 2; }
+
+for n in "$@"; do
+  resolve "$n"                          # validates, and sets N_SUDO/N_SESSION below
+  # pkill BEFORE kill-session, and -x to match the process name: same two
+  # reasons as demo-restart-ph, which this is the first half of.
+  on "$n" "${N_SUDO}pkill -x ph 2>/dev/null || true; \
+    tmux kill-session -t $N_SESSION 2>/dev/null || true"
+  echo "[$n] ph stopped"
+done

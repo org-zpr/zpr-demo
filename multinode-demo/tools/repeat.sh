@@ -11,7 +11,9 @@ trap 'exit 143' TERM
 while true; do
   # No `clear`: that blanks the screen while the command runs, which flickers.
   # Home the cursor, overwrite in place, then erase whatever the last run left below.
-  printf '\e[H'
+  # \e[K wipes line 1: a failed run's first line is often longer than a
+  # successful one's, and the trailing \e[J only clears below the last line.
+  printf '\e[H\e[K'
   "$@"
   rc=$?
   printf '\e[J'
